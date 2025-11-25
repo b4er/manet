@@ -1,0 +1,8 @@
+# user files
+.env
+
+# generated/build
+/build
+/.pre-commit-config.yaml
+
+result

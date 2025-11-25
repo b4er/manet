@@ -1,0 +1,4 @@
+format:
+  dangle_parens: true
+  enable_sort: true
+  autosort: true

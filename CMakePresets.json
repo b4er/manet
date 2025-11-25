@@ -1,0 +1,69 @@
+{
+  "configurePresets": [
+    {
+      "name": "debug",
+      "displayName": "Debug",
+      "generator": "Unix Makefiles",
+      "binaryDir": "build/debug",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "MANET_BUILD_TESTING": "ON",
+        "MANET_BUILD_EXAMPLES": "ON",
+        "MANET_ENABLE_COVERAGE": "OFF",
+        "MANET_USE_FSTACK": "OFF"
+      }
+    },
+    {
+      "name": "coverage",
+      "displayName": "Debug + Coverage",
+      "generator": "Unix Makefiles",
+      "binaryDir": "build/coverage",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "MANET_BUILD_TESTING": "ON",
+        "MANET_BUILD_EXAMPLES": "ON",
+        "MANET_ENABLE_COVERAGE": "ON",
+        "MANET_USE_FSTACK": "OFF"
+      }
+    },
+    {
+      "name": "release",
+      "displayName": "Release",
+      "generator": "Unix Makefiles",
+      "binaryDir": "build/release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "MANET_BUILD_TESTING": "OFF",
+        "MANET_BUILD_EXAMPLES": "OFF",
+        "MANET_ENABLE_COVERAGE": "OFF",
+        "MANET_USE_FSTACK": "OFF"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "debug",
+      "configurePreset": "debug"
+    },
+    {
+      "name": "coverage",
+      "configurePreset": "coverage"
+    },
+    {
+      "name": "release",
+      "configurePreset": "release"
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "test-debug",
+      "configurePreset": "debug"
+    },
+    {
+      "name": "test-coverage",
+      "configurePreset": "coverage"
+    }
+  ],
+
+  "version": 3
+}

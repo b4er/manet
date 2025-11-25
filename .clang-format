@@ -1,0 +1,23 @@
+BasedOnStyle: LLVM
+
+# Indentation & continuation
+IndentWidth: 2
+ContinuationIndentWidth: 2
+AlignAfterOpenBracket: BlockIndent
+
+# Calls like:
+# foo(
+#   many, ar, gs
+# )
+AllowAllArgumentsOnNextLine: true
+BinPackArguments: true
+BinPackParameters: true
+
+# Allman braces:
+BreakBeforeBraces: Allman
+
+# Pointers: "char *str"
+PointerAlignment: Right
+
+#
+BreakAdjacentStringLiterals: false

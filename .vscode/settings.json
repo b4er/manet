@@ -1,0 +1,27 @@
+{
+  "files.exclude": {
+    "**/*.d": true,
+    "**/*.o": true,
+    "build/": true,
+    "flake.lock": true,
+    "result": true,
+    ".pre-commit-config.yaml": true
+  },
+  "files.associations": {
+    "*.hh": "cpp",
+    "*.hpp": "cpp",
+    "*.cpp": "cpp",
+    "*.cc": "cpp",
+    "*.h": "c",
+    "*.c": "c",
+    "/nix/store/**/include/c++/**": "cpp"
+  },
+
+  "cmake.postRunCoverageTarget": "coverage",
+  "cmake.sourceDirectory": "${workspaceFolder}",
+  "cmake.useCMakePresets": "always",
+
+  "coverage-gutters.coverageFileNames": [
+    "coverage.filtered.info"
+  ]
+}
