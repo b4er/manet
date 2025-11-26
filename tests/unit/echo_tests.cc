@@ -53,12 +53,15 @@ struct EchoTest
 
 } // namespace manet::protocol
 
+namespace echo_tests
+{
+
 #define ECHO_TEST                                                              \
-  manet::reactor::test::reactor_test1<                                         \
+  manet::reactor::test::test1<                                                 \
     manet::transport::Plain, manet::protocol::EchoTest>
 
-#define R manet::net::test::FdAction::GrantRead
-#define W manet::net::test::FdAction::GrantWrite
+auto R = manet::net::test::FdAction::GrantRead;
+auto W = manet::net::test::FdAction::GrantWrite;
 
 TEST_CASE("asynchronous connect<Plain,EchoTest>()")
 {
@@ -217,3 +220,5 @@ TEST_CASE("interleavings")
     test_all_interleavings_everything(false, input.substr(0, i));
   }
 }
+
+} // namespace echo_tests

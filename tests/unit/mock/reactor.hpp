@@ -164,12 +164,12 @@ struct ReactorOutputs
   bool all_done;
 };
 
-template <typename TransportT, typename ProtocolT>
-ReactorOutputs reactor_test1(
+template <typename Transport, typename Protocol>
+ReactorOutputs test1(
   bool connect_async, std::string_view input, std::string_view expected_output,
   std::deque<net::test::FdAction> actions,
-  typename TransportT::config_t transport_cfg = typename TransportT::config_t{},
-  typename ProtocolT::config_t protocol_cfg = typename ProtocolT::config_t{}
+  typename Transport::config_t transport_cfg = typename Transport::config_t{},
+  typename Protocol::config_t protocol_cfg = typename Protocol::config_t{}
 ) noexcept
 {
   std::deque<net::test::FdScript> scripts = {net::test::FdScript{
@@ -179,7 +179,7 @@ ReactorOutputs reactor_test1(
     .connect_async = connect_async,
   }};
 
-  TestReactor<Connection<net::TestNet, TransportT, ProtocolT>> reactor(
+  TestReactor<Connection<net::TestNet, Transport, Protocol>> reactor(
     scripts, std::make_tuple(std::make_tuple(transport_cfg, protocol_cfg))
   );
 
@@ -188,7 +188,7 @@ ReactorOutputs reactor_test1(
   // determine the written output:
   std::string_view out_sv;
 
-  if constexpr (std::is_same_v<TransportT, transport::ScriptedTransport>)
+  if constexpr (std::is_same_v<Transport, transport::ScriptedTransport>)
   {
     out_sv = std::string_view{
       transport_cfg->output->data(), transport_cfg->output->size()

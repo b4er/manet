@@ -4,6 +4,7 @@
 #include <memory>
 
 #include "manet/reactor/connection.hpp"
+#include "manet/transport/status.hpp"
 
 namespace manet::transport
 {
@@ -29,100 +30,104 @@ struct ScriptedTransport
     std::deque<Status> shutdown_results;
   };
 
-  using ctx_t = script_t *;
-  using args_t = ctx_t;
+  using config_t = script_t *;
 
-  template <typename Net>
-  static std::optional<ctx_t> init(int, args_t initial_ctx) noexcept
+  template <typename Net> struct Endpoint
   {
-    if (!initial_ctx)
+    using fd_t = int;
+    script_t *script;
+
+    static std::optional<Endpoint> init(int, config_t script) noexcept
     {
-      return {};
+      if (!script)
+      {
+        return {};
+      }
+
+      if (!script->output)
+      {
+        script->output = std::make_shared<std::string>();
+      }
+
+      return Endpoint{script};
     }
 
-    if (!initial_ctx->output)
+    Status handshake_step() noexcept
     {
-      initial_ctx->output = std::make_shared<std::string>();
+      if (script->handshake_results.empty())
+        return Status::ok; // default: no handshake
+
+      auto st = script->handshake_results.front();
+      script->handshake_results.pop_front();
+      return st;
     }
 
-    return initial_ctx;
-  }
-
-  static Status handshake_step(ctx_t &ctx) noexcept
-  {
-    if (ctx->handshake_results.empty())
-      return Status::ok; // default: no handshake
-
-    auto st = ctx->handshake_results.front();
-    ctx->handshake_results.pop_front();
-    return st;
-  }
-
-  static Status read(ctx_t &ctx, reactor::RxSink in) noexcept
-  {
-    if (ctx->read_status.empty())
-      return Status::close; // default: EOF
-
-    auto st = ctx->read_status.front();
-    ctx->read_status.pop_front();
-
-    if (st == Status::ok)
+    Status read(reactor::RxSink in) noexcept
     {
-      if (ctx->read_fragments.empty())
-        return Status::error; // script bug
+      if (script->read_status.empty())
+        return Status::close; // default: EOF
 
-      auto &chunk = ctx->read_fragments.front();
-      auto n = std::min<std::size_t>(chunk.size(), in.wbuf().size());
-      std::memcpy(in.wbuf().data(), chunk.data(), n);
-      in.wrote(n);
-      chunk.erase(0, n);
-      if (chunk.empty())
-        ctx->read_fragments.pop_front();
+      auto st = script->read_status.front();
+      script->read_status.pop_front();
+
+      if (st == Status::ok)
+      {
+        if (script->read_fragments.empty())
+          return Status::error; // script bug
+
+        auto &chunk = script->read_fragments.front();
+        auto n = std::min<std::size_t>(chunk.size(), in.wbuf().size());
+        std::memcpy(in.wbuf().data(), chunk.data(), n);
+        in.wrote(n);
+        chunk.erase(0, n);
+        if (chunk.empty())
+          script->read_fragments.pop_front();
+      }
+
+      return st;
     }
 
-    return st;
-  }
-
-  static Status write(ctx_t &ctx, reactor::TxSource out) noexcept
-  {
-    if (ctx->write_status.empty())
+    Status write(reactor::TxSource out) noexcept
     {
-      // by default, accept and record everything
-      ctx->output.get()->append(
-        reinterpret_cast<const char *>(out.rbuf().data()), out.rbuf().size()
-      );
-      out.read(out.rbuf().size());
-      return Status::ok;
+      if (script->write_status.empty())
+      {
+        // by default, accept and record everything
+        script->output.get()->append(
+          reinterpret_cast<const char *>(out.rbuf().data()), out.rbuf().size()
+        );
+        out.read(out.rbuf().size());
+        return Status::ok;
+      }
+
+      auto st = script->write_status.front();
+      script->write_status.pop_front();
+
+      if (st == Status::ok)
+      {
+        script->output.get()->append(
+          reinterpret_cast<const char *>(out.rbuf().data()), out.rbuf().size()
+        );
+        out.read(out.rbuf().size());
+      }
+
+      return st;
     }
 
-    auto st = ctx->write_status.front();
-    ctx->write_status.pop_front();
-
-    if (st == Status::ok)
+    Status shutdown_step() noexcept
     {
-      ctx->output.get()->append(
-        reinterpret_cast<const char *>(out.rbuf().data()), out.rbuf().size()
-      );
-      out.read(out.rbuf().size());
+      if (script->shutdown_results.empty())
+        return Status::ok;
+
+      auto st = script->shutdown_results.front();
+      script->shutdown_results.pop_front();
+      return st;
     }
 
-    return st;
-  }
-
-  static Status shutdown_step(ctx_t &ctx) noexcept
-  {
-    if (ctx->shutdown_results.empty())
-      return Status::ok;
-
-    auto st = ctx->shutdown_results.front();
-    ctx->shutdown_results.pop_front();
-    return st;
-  }
-
-  static ctx_t destroy(ctx_t &ctx) noexcept { return ctx; }
+    void destroy() noexcept {}
+  };
 };
 
-inline ScriptedTransport::script_t transport_happypath(
+inline ScriptedTransport::script_t happypath(
   std::initializer_list<std::string_view> fragments,
   std::initializer_list<Status> handshake = {},
   std::initializer_list<Status> write_status = {},
