@@ -95,6 +95,12 @@ public:
         _transport_args(std::move(transport_args)),
         _protocol_args(std::move(protocol_args)), _state(state_t::uninitialized)
   {
+    static_assert(
+      std::is_nothrow_move_constructible_v<typename Transport::ctx_t>
+    );
+    static_assert(std::is_nothrow_destructible_v<typename Transport::ctx_t>);
+    static_assert(std::is_trivially_destructible_v<Buffer<RX_CAP>>);
+    static_assert(std::is_trivially_destructible_v<Buffer<TX_CAP>>);
   }
 
   void attach(void *cookie) noexcept
@@ -312,7 +318,7 @@ private:
     _rx.clear();
     _tx.clear();
 
-    net::DialResult<Net> result = dial<Net>(_host, _port);
+    net::DialResult<Net> result = net::dial<Net>(_host, _port);
 
     if (result.fd == -1)
     {
@@ -347,7 +353,22 @@ private:
     auto transport = Transport::template init<Net>(_fd, _transport_args);
     if (!transport.has_value())
     {
-      enter_error();
+      // enter_error (but do not teardown Transport):
+      _state = state_t::error;
+
+      if (_fd != -1)
+      {
+        if constexpr (protocol::HasTeardown<Protocol>)
+        {
+          Protocol::teardown(_protocol);
+        }
+
+        Net::clear(_fd);
+        Net::close(_fd);
+
+        _fd = -1;
+      }
+
       return;
     }
 

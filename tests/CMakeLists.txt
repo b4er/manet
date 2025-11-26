@@ -38,11 +38,12 @@ if(MANET_ENABLE_COVERAGE)
       # filter
       COMMAND ${LCOV_PATH} --ignore-errors inconsistent,inconsistent --extract
               coverage.info --output-file coverage.filtered.info
-      COMMAND ${LCOV_PATH} --ignore-errors inconsistent,inconsistent --remove
-              coverage.filtered.info --output-file coverage.filtered.info
+      COMMAND
+        ${LCOV_PATH} --ignore-errors inconsistent,inconsistent --remove
+        coverage.filtered.info "*/tests/*" --output-file coverage.filtered.info
       # html report
-      COMMAND ${GENHTML_PATH} coverage.filtered.info --output-directory
-              coverage_html
+      COMMAND ${GENHTML_PATH} coverage.filtered.info --prefix
+              ${CMAKE_SOURCE_DIR} --output-directory coverage_html
       WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
     )
 

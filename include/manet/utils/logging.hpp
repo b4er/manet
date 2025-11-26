@@ -56,8 +56,7 @@ inline void log(LogLevel level, std::string_view fmt, Args &&...args) noexcept
     std::string formatted;
     try
     {
-      formatted =
-        std::vformat(fmt, std::make_format_args(std::forward<Args>(args)...));
+      formatted = std::vformat(fmt, std::make_format_args(args...));
     }
     catch (...)
     {
