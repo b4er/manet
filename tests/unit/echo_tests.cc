@@ -16,40 +16,39 @@ namespace manet::protocol
 
 struct EchoTest
 {
-  using ctx_t = std::monostate;
-  using args_t = std::monostate;
+  using config_t = std::monostate;
 
-  static inline ctx_t init(std::string_view, uint16_t, args_t) noexcept
+  struct Session
   {
-    return {};
-  }
+    Session(std::string_view, uint16_t, config_t) noexcept {}
 
-  static inline Status on_connect(ctx_t &ctx, reactor::TxSink out) noexcept
-  {
-    CHECK(2 < out.wbuf().size());
-    out.wbuf().data()[0] = std::byte{'A'};
-    out.wbuf().data()[1] = std::byte{'B'};
-    out.wrote(2);
-    return Status::ok;
-  }
-
-  static inline Status on_data(ctx_t &ctx, reactor::IO io) noexcept
-  {
-    auto r = io.rbuf().size();
-    auto w = io.wbuf().size();
-
-    auto L = std::min(r, w);
-
-    for (int i = 0; i < L; i++)
+    inline Status on_connect(reactor::IO io) noexcept
     {
-      io.wbuf().data()[i] = io.rbuf()[i];
+      CHECK(2 < io.wbuf().size());
+      io.wbuf().data()[0] = std::byte{'A'};
+      io.wbuf().data()[1] = std::byte{'B'};
+      io.wrote(2);
+      return Status::ok;
     }
 
-    io.read(L);
-    io.wrote(L);
+    inline Status on_data(reactor::IO io) noexcept
+    {
+      auto r = io.rbuf().size();
+      auto w = io.wbuf().size();
 
-    return Status::ok;
-  }
+      auto L = std::min(r, w);
+
+      for (int i = 0; i < L; i++)
+      {
+        io.wbuf().data()[i] = io.rbuf()[i];
+      }
+
+      io.read(L);
+      io.wrote(L);
+
+      return Status::ok;
+    }
+  };
 };
 
 } // namespace manet::protocol

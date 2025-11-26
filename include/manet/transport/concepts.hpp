@@ -9,35 +9,40 @@
 namespace manet::transport
 {
 
-template <typename T>
-concept HasHandshake = requires { (void)&T::handshake_step; };
+template <typename Net, typename T>
+concept HasHandshake =
+  requires { (void)&T::template Endpoint<Net>::handshake_step; };
 
-template <typename T>
-concept Handshake = requires(T::ctx_t &ctx) {
-  { T::handshake_step(ctx) } noexcept -> std::same_as<Status>;
+template <typename Net, typename T>
+concept Handshake = requires(typename T::template Endpoint<Net> &ctx) {
+  { ctx.handshake_step() } -> std::same_as<transport::Status>;
 };
 
-template <typename T>
-concept HasShutdown = requires { (void)&T::shutdown_step; };
+template <typename Net, typename T>
+concept HasShutdown =
+  requires { (void)&T::template Endpoint<Net>::shutdown_step; };
 
-template <typename T>
-concept Shutdown = requires(T::ctx_t ctx) {
-  { T::shutdown_step(ctx) } noexcept -> std::same_as<Status>;
+template <typename Net, typename T>
+concept Shutdown = requires(typename T::template Endpoint<Net> &ctx) {
+  { ctx.shutdown_step() } -> std::same_as<transport::Status>;
 };
 
 template <typename Net, typename T>
 concept Transport =
   requires(
-    T::ctx_t ctx, typename Net::fd_t fd, T::args_t args,
-    manet::reactor::RxSink in, manet::reactor::TxSource out
+    typename T::template Endpoint<Net> &ctx, typename Net::fd_t fd,
+    const typename T::config_t &config, manet::reactor::RxSink in,
+    manet::reactor::TxSource out
   ) {
     {
-      T::template init<Net>(fd, args)
-    } noexcept -> std::same_as<std::optional<typename T::ctx_t>>;
-    { T::write(ctx, out) } noexcept -> std::same_as<Status>;
-    { T::read(ctx, in) } noexcept -> std::same_as<Status>;
-    { T::destroy(ctx) } noexcept -> std::same_as<typename T::ctx_t>;
+      T::template Endpoint<Net>::init(fd, config)
+    } noexcept
+      -> std::same_as<std::optional<typename T::template Endpoint<Net>>>;
+    { ctx.write(out) } noexcept -> std::same_as<Status>;
+    { ctx.read(in) } noexcept -> std::same_as<Status>;
+    { ctx.destroy() } noexcept -> std::same_as<void>;
   } &&
-  (!HasHandshake<T> || Handshake<T>) && (!HasShutdown<T> || Shutdown<T>);
+  (!HasHandshake<Net, T> || Handshake<Net, T>) &&
+  (!HasShutdown<Net, T> || Shutdown<Net, T>);
 
 } // namespace manet::transport

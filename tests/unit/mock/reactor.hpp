@@ -24,11 +24,13 @@ public:
   // test outputs
   std::vector<int> restarts = {};
 
-  template <typename... Args>
-  TestReactor(net::TestNet::config_t &config, const std::tuple<Args...> &args)
+  template <typename... Configs>
+  TestReactor(
+    net::TestNet::config_t &config, const std::tuple<Configs...> &cfgs
+  )
   {
     net::TestNet::init(config);
-    init(args, std::make_index_sequence<NUM_CONNECTIONS>{});
+    init(cfgs, std::make_index_sequence<NUM_CONNECTIONS>{});
     net::TestNet::run(loop, this);
   }
 
@@ -61,18 +63,22 @@ private:
     return _conn_ids.contains(conn) ? _conn_ids[conn] : -1;
   }
 
-  template <typename Args, std::size_t... I>
-  void init(const Args &args, std::index_sequence<I...>)
+  template <typename Configs, std::size_t... I>
+  void init(const Configs &cfgs, std::index_sequence<I...>)
   {
-    (init_connection<I>(std::get<I>(args)), ...);
+    (init_connection<I>(std::get<I>(cfgs)), ...);
   }
 
-  template <std::size_t I, typename Arg> void init_connection(const Arg &arg)
+  template <std::size_t I, typename Config>
+  void init_connection(const Config &cfg)
   {
     using Conn = std::tuple_element_t<I, std::tuple<Connections...>>;
 
+    constexpr std::string_view host = "localhost";
+    constexpr uint16_t port = 101;
+
     auto &opt = std::get<I>(connections);
-    opt.emplace("localhost", 101, std::get<0>(arg), std::get<1>(arg));
+    opt.emplace(host, port, std::get<0>(cfg), std::get<1>(cfg));
 
     Conn *conn = std::addressof(*opt);
     conn->attach(static_cast<BaseConnection<net::TestNet> *>(conn));
@@ -162,8 +168,8 @@ template <typename TransportT, typename ProtocolT>
 ReactorOutputs reactor_test1(
   bool connect_async, std::string_view input, std::string_view expected_output,
   std::deque<net::test::FdAction> actions,
-  typename TransportT::args_t transport_args = typename TransportT::args_t{},
-  typename ProtocolT::args_t protocol_args = typename ProtocolT::args_t{}
+  typename TransportT::config_t transport_cfg = typename TransportT::config_t{},
+  typename ProtocolT::config_t protocol_cfg = typename ProtocolT::config_t{}
 ) noexcept
 {
   std::deque<net::test::FdScript> scripts = {net::test::FdScript{
@@ -174,7 +180,7 @@ ReactorOutputs reactor_test1(
   }};
 
   TestReactor<Connection<net::TestNet, TransportT, ProtocolT>> reactor(
-    scripts, std::make_tuple(std::make_tuple(transport_args, protocol_args))
+    scripts, std::make_tuple(std::make_tuple(transport_cfg, protocol_cfg))
   );
 
   CHECK(!reactor.stopping);
@@ -185,7 +191,7 @@ ReactorOutputs reactor_test1(
   if constexpr (std::is_same_v<TransportT, transport::ScriptedTransport>)
   {
     out_sv = std::string_view{
-      transport_args->output->data(), transport_args->output->size()
+      transport_cfg->output->data(), transport_cfg->output->size()
     };
   }
   else

@@ -11,8 +11,8 @@ template <typename Transport, typename Protocol> struct ConnectionConfig
   std::string host;
   uint16_t port;
 
-  typename Transport::args_t transport_args;
-  typename Protocol::args_t protocol_args;
+  typename Transport::config_t transport_config;
+  typename Protocol::config_t protocol_config;
 };
 
 /** Statically known set of connections.
@@ -72,12 +72,14 @@ private:
   }
 
   template <std::size_t I, typename Config>
-  void init_connection(const Config &cfg)
+  void init_connection(const Config &config)
   {
     using Conn = std::tuple_element_t<I, std::tuple<Connections...>>;
 
     auto &opt = std::get<I>(connections);
-    opt.emplace(cfg.host, cfg.port, cfg.transport_args, cfg.protocol_args);
+    opt.emplace(
+      config.host, config.port, config.transport_config, config.protocol_config
+    );
 
     Conn *conn = std::addressof(*opt);
     conn->attach(static_cast<BaseConnection<Net> *>(conn));

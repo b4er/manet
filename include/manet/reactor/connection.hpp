@@ -87,18 +87,25 @@ class Connection : public BaseConnection<Net>
 public:
   using protocol_t = Protocol;
 
+  using Endpoint = typename Transport::template Endpoint<Net>;
+  using Session = typename Protocol::Session;
+
   Connection(
-    std::string host, uint16_t port, typename Transport::args_t transport_args,
-    typename Protocol::args_t protocol_args
+    std::string_view host, uint16_t port,
+    typename Transport::config_t transport_config,
+    typename Protocol::config_t protocol_config
   )
-      : _host(std::move(host)), _port(port),
-        _transport_args(std::move(transport_args)),
-        _protocol_args(std::move(protocol_args)), _state(state_t::uninitialized)
+      : _host(host),
+        _port(port),
+        _transport_config(std::move(transport_config)),
+        _protocol_config(std::move(protocol_config)),
+        _protocol(Session{_host, _port, _protocol_config}),
+        _state(state_t::uninitialized)
   {
-    static_assert(
-      std::is_nothrow_move_constructible_v<typename Transport::ctx_t>
-    );
-    static_assert(std::is_nothrow_destructible_v<typename Transport::ctx_t>);
+    static_assert(std::is_nothrow_move_assignable_v<Endpoint>);
+    static_assert(std::is_nothrow_move_constructible_v<Endpoint>);
+    static_assert(std::is_nothrow_destructible_v<Endpoint>);
+
     static_assert(std::is_trivially_destructible_v<Buffer<RX_CAP>>);
     static_assert(std::is_trivially_destructible_v<Buffer<TX_CAP>>);
   }
@@ -141,7 +148,7 @@ public:
     {
       if (_state == state_t::protocol)
       {
-        Protocol::heartbeat(_protocol, Output{&_tx});
+        _protocol.heartbeat(Output{&_tx});
         transport_write();
       }
     }
@@ -153,6 +160,8 @@ public:
       return;
 
     teardown();
+
+    _protocol = Session{_host, _port, _protocol_config};
 
     enter_uninitialized();
   }
@@ -235,7 +244,7 @@ private:
     }
   }
 
-  std::string _host;
+  std::string_view _host;
   uint16_t _port;
 
   state_t _state;
@@ -245,11 +254,11 @@ private:
   Buffer<RX_CAP> _rx;
   Buffer<TX_CAP> _tx;
 
-  typename Transport::args_t _transport_args;
-  typename Protocol::args_t _protocol_args;
+  typename Transport::config_t _transport_config;
+  typename Protocol::config_t _protocol_config;
 
-  typename Transport::ctx_t _transport;
-  typename Protocol::ctx_t _protocol;
+  Endpoint _transport;
+  Session _protocol;
 
   void *_cookie = nullptr;
 
@@ -332,7 +341,6 @@ private:
     }
 
     _fd = result.fd;
-    _protocol = Protocol::init(_host, _port, _protocol_args);
 
     if (result.err == EINPROGRESS)
     {
@@ -350,7 +358,7 @@ private:
 
   void enter_connected() noexcept
   {
-    auto transport = Transport::template init<Net>(_fd, _transport_args);
+    auto transport = Endpoint::init(_fd, _transport_config);
     if (!transport.has_value())
     {
       // enter_error (but do not teardown Transport):
@@ -360,7 +368,7 @@ private:
       {
         if constexpr (protocol::HasTeardown<Protocol>)
         {
-          Protocol::teardown(_protocol);
+          _protocol.teardown();
         }
 
         Net::clear(_fd);
@@ -372,9 +380,9 @@ private:
       return;
     }
 
-    _transport = transport.value();
+    _transport = std::move(*transport);
 
-    if constexpr (transport::HasHandshake<Transport>)
+    if constexpr (transport::HasHandshake<Net, Transport>)
     {
       // let step_Transport continue
       _state = state_t::transport;
@@ -395,12 +403,11 @@ private:
 
     if constexpr (protocol::HasConnectHandler<Protocol>)
     {
-      bind_protocol(Protocol::on_connect);
+      bind_protocol<&Session::on_connect>();
     }
     else
     {
-      bind_protocol([](typename Protocol::ctx_t &ctx, TxSink output)
-                    { return protocol::Status::ok; });
+      transport_write();
     }
   }
 
@@ -414,7 +421,7 @@ private:
       {
         auto before = _rx.rbuf().size();
 
-        switch (Protocol::on_shutdown(_protocol, IO{Input{&_rx}, Output{&_tx}}))
+        switch (_protocol.on_shutdown(IO{Input{&_rx}, Output{&_tx}}))
         {
         case protocol::Status::ok:
         {
@@ -503,9 +510,9 @@ private:
   {
     // just to keep the compiler happy (condition always true otw. Transport
     // state is skipped)
-    if constexpr (transport::HasHandshake<Transport>)
+    if constexpr (transport::HasHandshake<Net, Transport>)
     {
-      transport::Status status = Transport::handshake_step(_transport);
+      transport::Status status = _transport.handshake_step();
       if (status == transport::Status::ok)
       {
         enter_Protocol();
@@ -521,7 +528,7 @@ private:
     }
   }
 
-  void protocol_consume(auto &proto) noexcept
+  void protocol_consume() noexcept
   {
     while (true)
     {
@@ -532,7 +539,7 @@ private:
         return;
       }
 
-      bind_protocol(proto);
+      bind_protocol<&Session::on_data>();
 
       // protocol layer changed state -> done
       if (_state != state_t::protocol)
@@ -556,7 +563,7 @@ private:
       transport_read(
         [this]()
         {
-          protocol_consume(Protocol::on_data);
+          protocol_consume();
           return _state == state_t::protocol;
         },
         [this]() { enter_close_transport(); }
@@ -585,9 +592,7 @@ private:
             {
               auto before = _rx.rbuf().size();
 
-              switch (
-                Protocol::on_shutdown(_protocol, IO{Input{&_rx}, Output{&_tx}})
-              )
+              switch (_protocol.on_shutdown(IO{Input{&_rx}, Output{&_tx}}))
               {
               case protocol::Status::ok:
                 transport_write();
@@ -643,9 +648,9 @@ private:
 
   void step_close_transport() noexcept
   {
-    if constexpr (transport::HasShutdown<Transport>)
+    if constexpr (transport::HasShutdown<Net, Transport>)
     {
-      transport::Status status = Transport::shutdown_step(_transport);
+      transport::Status status = _transport.shutdown_step();
       switch (status)
       {
       case transport::Status::ok:
@@ -694,9 +699,10 @@ private:
   }
 
   // always called when _state == Protocol
-  void bind_protocol(auto &&proto) noexcept
+  template <protocol::Status (Session::*Handler)(IO) noexcept>
+  void bind_protocol() noexcept
   {
-    switch (proto(_protocol, IO{Input{&_rx}, Output{&_tx}}))
+    switch ((_protocol.*Handler)(IO{Input{&_rx}, Output{&_tx}}))
     {
     case protocol::Status::ok:
     {
@@ -752,7 +758,7 @@ private:
       }
 
       auto before = _rx.rbuf().size();
-      transport::Status st = Transport::read(_transport, Output{&_rx});
+      transport::Status st = _transport.read(Output{&_rx});
       auto after = _rx.rbuf().size();
 
       if (after != before)
@@ -789,7 +795,7 @@ private:
     while (_fd != -1 && !_tx.rbuf().empty())
     {
       auto before = _tx.rbuf().size();
-      transport::Status status = Transport::write(_transport, Input{&_tx});
+      transport::Status status = _transport.write(Input{&_tx});
 
       if (status == transport::Status::close && _state != state_t::error)
       {
@@ -827,10 +833,10 @@ private:
     {
       if constexpr (protocol::HasTeardown<Protocol>)
       {
-        Protocol::teardown(_protocol);
+        _protocol.teardown();
       }
 
-      _transport = Transport::destroy(_transport);
+      _transport.destroy();
 
       Net::clear(_fd);
       Net::close(_fd);

@@ -19,5 +19,5 @@ BreakBeforeBraces: Allman
 # Pointers: "char *str"
 PointerAlignment: Right
 
-#
 BreakAdjacentStringLiterals: false
+PackConstructorInitializers: Never

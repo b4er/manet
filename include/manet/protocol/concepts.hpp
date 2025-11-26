@@ -11,46 +11,46 @@ namespace manet::protocol
 {
 
 template <typename P>
-concept HasConnectHandler = requires { (void)&P::on_connect; };
+concept HasConnectHandler = requires { (void)&P::Session::on_connect; };
 
 template <typename P>
 concept ConnectHandler =
-  requires(P::ctx_t &ctx, manet::reactor::TxSink output) {
-    { P::on_connect(ctx, output) } noexcept -> std::same_as<Status>;
+  requires(typename P::Session &ctx, manet::reactor::IO io) {
+    { ctx.on_connect(io) } noexcept -> std::same_as<Status>;
   };
 
 template <typename P>
-concept HasHeartbeat = requires { (void)&P::heartbeat; };
+concept HasHeartbeat = requires { (void)&P::Session::heartbeat; };
 
 template <typename P>
-concept Heartbeat = requires(P::ctx_t &ctx, manet::reactor::TxSink output) {
-  { P::heartbeat(ctx, output) } noexcept -> std::same_as<void>;
+concept Heartbeat = requires(P::Session &ctx, manet::reactor::TxSink output) {
+  { ctx.heartbeat(output) } noexcept -> std::same_as<void>;
 };
 
 template <typename P>
-concept HasShutdown = requires { (void)&P::on_shutdown; };
+concept HasShutdown = requires { (void)&P::Session::on_shutdown; };
 
 template <typename P>
-concept Shutdown = requires(P::ctx_t &ctx, manet::reactor::IO io) {
-  { P::on_shutdown(ctx, io) } noexcept -> std::same_as<Status>;
+concept Shutdown = requires(P::Session &ctx, manet::reactor::IO io) {
+  { ctx.on_shutdown(io) } noexcept -> std::same_as<Status>;
 };
 
 template <typename P>
-concept HasTeardown = requires { (void)&P::teardown; };
+concept HasTeardown = requires { (void)&P::Session::teardown; };
 
 template <typename P>
-concept Teardown = requires(P::ctx_t &ctx) {
-  { P::teardown(ctx) } noexcept -> std::same_as<Status>;
+concept Teardown = requires(P::Session &ctx) {
+  { ctx.teardown() } noexcept -> std::same_as<Status>;
 };
 
 template <typename P>
 concept Protocol =
   requires(
-    std::string_view host, uint16_t port, const typename P::args_t args,
-    P::ctx_t &ctx, manet::reactor::IO io, manet::reactor::TxSink out
+    std::string_view host, uint16_t port, const typename P::config_t &config,
+    typename P::Session &ctx, manet::reactor::IO io
   ) {
-    { P::init(host, port, args) } noexcept -> std::same_as<typename P::ctx_t>;
-    { P::on_data(ctx, io) } noexcept -> std::same_as<Status>;
+    { typename P::Session{host, port, config} } noexcept;
+    { ctx.on_data(io) } noexcept -> std::same_as<Status>;
   } &&
   (!HasConnectHandler<P> || ConnectHandler<P>) &&
   (!HasHeartbeat<P> || Heartbeat<P>) && (!HasShutdown<P> || Shutdown<P>) &&
