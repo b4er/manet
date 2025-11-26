@@ -18,6 +18,7 @@ struct Plain
     using fd_t = typename Net::fd_t;
 
     fd_t fd;
+
     int (*net_read)(fd_t, void *, std::size_t) noexcept;
     int (*net_write)(fd_t, const void *, std::size_t) noexcept;
 
