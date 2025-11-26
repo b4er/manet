@@ -5,6 +5,8 @@
 
 #include "ff_api.h"
 
+#include "manet/utils/logging.hpp"
+
 namespace manet::net
 {
 
@@ -51,50 +53,69 @@ struct FStack
   static void
   subscribe(void *ptr, fd_t fd, bool want_read, bool want_write) noexcept
   {
-    static_assert(want_read != want_write);
-
     struct kevent kev[2];
+    int k = 0;
+
+    // delete subscription(s):
+
+    if (!want_read)
+    {
+      EV_SET(&kev[k++], fd, EVFILT_READ, EV_DELETE, 0, 0, ptr);
+    }
+
+    if (!want_write)
+    {
+      EV_SET(&kev[k++], fd, EVFILT_WRITE, EV_DELETE, 0, 0, ptr);
+    }
+
+    if (0 < k)
+    {
+      (void)ff_kevent(_kq, kev, k, nullptr, 0, nullptr);
+    }
+
+    k = 0;
+
+    // add subscription(s):
 
     if (want_read)
     {
-      EV_SET(&kev[0], fd, EVFILT_WRITE, EV_DELETE, 0, 0, ptr);
       EV_SET(
-        &kev[0], fd, EVFILT_READ, EV_ADD | EV_ENABLE | EV_CLEAR, 0, 0, ptr
-      );
-    }
-    else
-    {
-      EV_SET(&kev[0], fd, EVFILT_READ, EV_DELETE, 0, 0, ptr);
-      EV_SET(
-        &kev[0], fd, EVFILT_WRITE, EV_ADD | EV_ENABLE | EV_CLEAR, 0, 0, ptr
+        &kev[k++], fd, EVFILT_READ, EV_ADD | EV_ENABLE | EV_CLEAR, 0, 0, ptr
       );
     }
 
-    if (ff_kevent(_kq, kev, 2, nullptr, 0, nullptr) < 0)
+    if (want_write)
+    {
+      EV_SET(
+        &kev[k++], fd, EVFILT_WRITE, EV_ADD | EV_ENABLE | EV_CLEAR, 0, 0, ptr
+      );
+    }
+
+    if (k == 0)
+      return;
+
+    if (ff_kevent(_kq, kev, k, nullptr, 0, nullptr) < 0)
     {
       switch (errno)
       {
-      case ENOENT:
-      case EBADF:
-        // non-sense, or raced (already closed/removed)
-        return;
       case EEXIST:
-        Log::log(LogLevel::warn, "ff_kevent(flags={}) -> EEXIST", flags);
-        if (flags & EV_ADD)
+      {
+        // already exists:
+        for (int i = 0; i < k; ++i)
         {
-          EV_SET(&kev, fd, events, EV_ENABLE, 0, 0, ptr);
-          if (ff_kevent(kq, &kev, 1, NULL, 0, NULL) == 0)
-            return;
+          EV_SET(&kev[i], fd, kev[i].filter, EV_ENABLE, 0, 0, ptr);
         }
+
+        (void)ff_kevent(_kq, kev, k, nullptr, 0, nullptr);
+        return;
+      }
+      case EBADF:
         break;
       default:
-      {
-        char err_str[64];
-        std::snprintf(
-          err_str, 64, "ff_kevent(kq=%d, flags=%d, fd=%d, _)", kq, flags, fd
+        manet::utils::error(
+          "FStack::subscribe(_, {}, {}, {}) failed", fd, want_read, want_write
         );
-        perror(err_str);
-      }
+        break;
       }
     }
   }

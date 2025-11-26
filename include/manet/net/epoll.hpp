@@ -9,13 +9,13 @@
 namespace manet::net
 {
 
-struct Posix
+struct Epoll
 {
   using config_t = std::monostate;
   using fd_t = int;
   using event_t = epoll_event;
 
-  static constexpr const char *name = "POSIX";
+  static constexpr const char *name = "Epoll";
 
   // sockets
   static fd_t socket(int domain, int type, int proto) noexcept;
