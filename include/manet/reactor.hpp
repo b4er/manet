@@ -38,7 +38,7 @@ public:
       "invalid Configs (must match Connections)"
     );
 
-    Log::log(LogLevel::info, "initialising backend ({})", Net::name);
+    manet::utils::info("initialising net ({})", Net::name);
     Net::init(config);
 
     // initialise all connections
@@ -52,7 +52,7 @@ public:
       throw;
     }
 
-    Log::log(LogLevel::info, "entering poll loop");
+    manet::utils::info("entering poll loop");
     Net::run(loop, this);
   }
 
@@ -96,7 +96,7 @@ private:
     int nevents = Net::poll(self->events.data(), NUM_EVENTS);
     if (nevents < 0)
     {
-      Log::log(LogLevel::error, "poll failed");
+      manet::utils::error("poll failed");
       Net::stop();
     }
 
@@ -163,7 +163,7 @@ private:
 
   void stop_all() noexcept
   {
-    Log::log(LogLevel::info, "stopping all connections");
+    manet::utils::info("stopping all connections");
     std::apply(
       [](auto &...opt) { ((opt ? opt->stop() : void()), ...); }, connections
     );

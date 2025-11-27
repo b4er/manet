@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.20)
 project(manet CXX)
 
 option(MANET_BUILD_TESTING "Build tests" ON)
-option(MANET_BUILD_EXAMPLES "Build examples" OFF)
+option(MANET_BUILD_EXAMPLES "Build examples" ON)
 
 option(MANET_ENABLE_COVERAGE "Build with coverage instrumentation" OFF)
 option(MANET_USE_FSTACK "Enable F-Stack backend" OFF)
@@ -35,11 +35,9 @@ set(MANET_PUBLIC_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/include)
 file(GLOB_RECURSE MANET_SRC_FILES ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cc)
 
 if(MANET_USE_FSTACK)
-  list(REMOVE_ITEM MANET_SRC_FILES ${CMAKE_SOURCE_DIR}/src/net/backend/posix.cc)
+  list(REMOVE_ITEM MANET_SRC_FILES ${CMAKE_SOURCE_DIR}/src/manet/net/epoll.cc)
 else()
-  list(REMOVE_ITEM MANET_SRC_FILES
-       ${CMAKE_SOURCE_DIR}/src/net/backend/f-stack.cc
-  )
+  list(REMOVE_ITEM MANET_SRC_FILES ${CMAKE_SOURCE_DIR}/src/manet/net/fstack.cc)
 endif()
 
 # --- manet library
@@ -105,4 +103,6 @@ if(MANET_BUILD_TESTING)
   add_subdirectory(tests)
 endif()
 
-# if(MANET_BUILD_EXAMPLES) add_subdirectory(examples) endif()
+if(MANET_BUILD_EXAMPLES)
+  add_subdirectory(examples)
+endif()

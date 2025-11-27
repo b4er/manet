@@ -69,9 +69,10 @@ inline void log(LogLevel level, std::string_view fmt, Args &&...args) noexcept
     static std::mutex mutex;
     std::lock_guard<std::mutex> lock(mutex);
 
-    ::write(STDERR_FILENO, pfx.data(), pfx.size());
-    ::write(STDERR_FILENO, formatted.data(), formatted.size());
-    ::write(STDERR_FILENO, "\n", 1);
+    std::size_t n = ::write(STDERR_FILENO, pfx.data(), pfx.size());
+    n = ::write(STDERR_FILENO, formatted.data(), formatted.size());
+    n = ::write(STDERR_FILENO, "\n", 1);
+    (void)n;
   }
 }
 
