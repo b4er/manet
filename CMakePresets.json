@@ -21,7 +21,7 @@
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
         "MANET_BUILD_TESTING": "ON",
-        "MANET_BUILD_EXAMPLES": "ON",
+        "MANET_BUILD_EXAMPLES": "OFF",
         "MANET_ENABLE_COVERAGE": "ON",
         "MANET_USE_FSTACK": "OFF"
       }
