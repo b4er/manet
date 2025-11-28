@@ -8,6 +8,7 @@
 #include "manet/reactor/io.hpp"
 #include "manet/utils/hexdump.hpp"
 
+#include "websocket_concepts.hpp"
 #include "websocket_frame.hpp"
 
 namespace manet::protocol
@@ -22,9 +23,7 @@ struct Header
   std::string value;
 };
 
-} // namespace websocket
-
-namespace websocket_detail
+namespace detail
 {
 
 struct Handshake
@@ -34,22 +33,27 @@ struct Handshake
 };
 
 Handshake make_handshake(
-  std::string_view host, std::string_view path,
-  std::span<const websocket::Header> extra
+  std::string_view host, std::string_view path, std::span<const Header> extra
 ) noexcept;
 
-Status
-read_handshake(std::array<char, 28> ws_accept_key, reactor::IO io) noexcept;
+Status read_handshake(
+  std::array<char, 28> ws_accept_key, reactor::RxSource in
+) noexcept;
+
+std::size_t write_close(CloseCode code, std::span<std::byte> output) noexcept;
+
 void random_bytes(std::byte *buf, std::size_t len) noexcept;
 
-} // namespace websocket_detail
+} // namespace detail
 
-template <typename Codec> struct WebSocket
+template <typename Codec>
+  requires MessageCodec<Codec>
+struct WebSocket
 {
   struct config_t
   {
     std::string path;
-    std::vector<websocket::Header> extra;
+    std::vector<Header> extra;
 
     typename Codec::config_t codec_config{};
   };
@@ -60,13 +64,13 @@ template <typename Codec> struct WebSocket
 
     std::string_view host;
     std::string path;
-    std::vector<websocket::Header> extra;
+    std::vector<Header> extra;
 
     std::size_t msg_len = 0;
 
     std::array<char, 28> ws_accept_key{};
 
-    websocket::OpCode opcode;
+    detail::OpCode opcode;
 
     enum class State : uint8_t
     {
@@ -91,7 +95,7 @@ template <typename Codec> struct WebSocket
 
     Status on_connect(reactor::TxSink output) noexcept
     {
-      auto handshake = websocket_detail::make_handshake(host, path, extra);
+      auto handshake = detail::make_handshake(host, path, extra);
       auto out = output.wbuf();
 
       auto len = handshake.upgrade_request.size();
@@ -115,8 +119,12 @@ template <typename Codec> struct WebSocket
       {
       case State::handshake_sent:
       {
-        auto status = websocket_detail::read_handshake(ws_accept_key, io);
-        if (status == Status::ok)
+        auto before = io.rbuf().size();
+
+        auto status = detail::read_handshake(ws_accept_key, io);
+
+        // if we consumed the HTTP frame and are ok then start listening
+        if (io.rbuf().size() != before && status == Status::ok)
         {
           state = State::listening;
         }
@@ -130,13 +138,23 @@ template <typename Codec> struct WebSocket
       return Status::error;
     }
 
-    Status on_shutdown([[maybe_unused]] reactor::TxSink output) noexcept
+    Status on_shutdown(reactor::TxSink output) noexcept
     {
-      // auto sent = ws_write_close(ws::close_code::normal, output.wbuf());
-      // output.wrote(sent);
+      detail::CloseCode close_code;
 
-      // return 0 < sent ? Status::close : Status::error;
-      return Status::ok;
+      if constexpr (HasShutdownHandler<Codec>)
+      {
+        close_code = codec.on_shutdown();
+      }
+      else
+      {
+        close_code = detail::CloseCode::normal;
+      }
+
+      auto sent = detail::write_close(close_code, output.wbuf());
+      output.wrote(sent);
+
+      return 0 < sent ? Status::close : Status::error;
     }
 
   private:
@@ -145,11 +163,11 @@ template <typename Codec> struct WebSocket
       auto input = io.rbuf();
 
       // attempt reading the frame
-      websocket::parse_output parsed;
+      detail::parse_output parsed;
 
-      switch (websocket::parse_frame(input, parsed))
+      switch (detail::parse_frame(input, parsed))
       {
-      case websocket::parse_status::ok:
+      case detail::parse_status::ok:
       {
         // successful parse: read bytes and advance input
         io.read(parsed.consumed);
@@ -163,7 +181,7 @@ template <typename Codec> struct WebSocket
         // clear and an opcode other than 0, followed by zero or more frames
         // with the FIN bit clear and the opcode set to 0, and terminated by
         // a single frame with the FIN bit set and an opcode of 0.
-        if (!parsed.frame.fin || parsed.frame.op == websocket::OpCode::cont)
+        if (!parsed.frame.fin || parsed.frame.op == detail::OpCode::cont)
         {
           if (MSG_CAP < msg_len + payload.size())
           {
@@ -194,7 +212,7 @@ template <typename Codec> struct WebSocket
               return status;
             }
           }
-          else if (parsed.frame.op != websocket::OpCode::cont)
+          else if (parsed.frame.op != detail::OpCode::cont)
           {
             opcode = parsed.frame.op;
           }
@@ -211,19 +229,19 @@ template <typename Codec> struct WebSocket
 
         return Status::ok;
       }
-      case websocket::parse_status::need_more:
+      case detail::parse_status::need_more:
       {
         log::trace(
           "need more, rxbuf[{}]:\n{}", input.size(), utils::hexdump(input)
         );
         return Status::ok;
       }
-      case websocket::parse_status::masked_server:
+      case detail::parse_status::masked_server:
       {
         log::error("server-to-client frame must not be masked");
         return Status::error;
       }
-      case websocket::parse_status::bad_reserved:
+      case detail::parse_status::bad_reserved:
       {
         log::error("RSV bits set");
         return Status::error;
@@ -234,31 +252,30 @@ template <typename Codec> struct WebSocket
     }
 
     Status handle_frame(
-      reactor::IO io, websocket::OpCode opcode,
-      std::span<const std::byte> payload
+      reactor::IO io, detail::OpCode opcode, std::span<const std::byte> payload
     ) noexcept
     {
       switch (opcode)
       {
-      case websocket::OpCode::cont:
+      case detail::OpCode::cont:
       {
         log::warn("WebSocket::CONT nothing to handle");
         return Status::ok;
       }
-      case websocket::OpCode::text:
+      case detail::OpCode::text:
       {
         log::trace("WebSocket::TEXT");
-        if constexpr (requires { (void)&Codec::on_text; })
+        if constexpr (HasTextHandler<Codec>)
         {
           return codec.on_text(io, payload);
         }
 
         return Status::ok;
       }
-      case websocket::OpCode::binary:
+      case detail::OpCode::binary:
       {
         log::trace("WebSocket::BINARY");
-        if constexpr (requires { (void)&Codec::on_binary; })
+        if constexpr (HasBinaryHandler<Codec>)
         {
           return codec.on_binary(io, payload);
         }
@@ -267,14 +284,14 @@ template <typename Codec> struct WebSocket
           return Status::ok;
         }
       }
-      case websocket::OpCode::close:
+      case detail::OpCode::close:
       {
         log::info("WebSocket::CLOSE");
 
         auto out = io.wbuf();
         const std::size_t len = payload.size();
 
-        uint16_t code = uint16_t(websocket::CloseCode::normal);
+        uint16_t code = uint16_t(detail::CloseCode::normal);
         if (len >= 2)
         {
           const uint8_t *p = reinterpret_cast<const uint8_t *>(payload.data());
@@ -284,7 +301,7 @@ template <typename Codec> struct WebSocket
         if (out.size() >= 8)
         {
           out.data()[0] =
-            std::byte{0x80} | static_cast<std::byte>(websocket::OpCode::close);
+            std::byte{0x80} | static_cast<std::byte>(detail::OpCode::close);
           out.data()[1] = std::byte{0x80 | 0x02}; // MASK; len = 2 bytes
 
           out.data()[2] = std::byte{0xDE};
@@ -300,7 +317,7 @@ template <typename Codec> struct WebSocket
 
         return Status::close;
       }
-      case websocket::OpCode::ping:
+      case detail::OpCode::ping:
       {
         std::size_t len = payload.size();
         if (126 <= len)
@@ -323,12 +340,12 @@ template <typename Codec> struct WebSocket
 
         // FIN | opcode
         out.data()[0] =
-          std::byte{0x80} | static_cast<std::byte>(websocket::OpCode::pong);
+          std::byte{0x80} | static_cast<std::byte>(detail::OpCode::pong);
         // MASK=1 | payload len
         out.data()[1] = std::byte{0x80} | static_cast<std::byte>(len);
 
         // mask
-        websocket_detail::random_bytes(out.data() + 2, 4);
+        detail::random_bytes(out.data() + 2, 4);
 
         // masked payload
         for (std::size_t i = 0; i < payload.size(); i++)
@@ -340,7 +357,7 @@ template <typename Codec> struct WebSocket
 
         return Status::ok;
       }
-      case websocket::OpCode::pong:
+      case detail::OpCode::pong:
       {
         return Status::ok;
       }
@@ -349,16 +366,6 @@ template <typename Codec> struct WebSocket
   };
 };
 
-/*
-template <typename Codec>
-concept HasTextHandler = requires { (void)&Codec::on_text; };
-
-template <typename Codec>
-concept HasBinaryHandler = requires { (void)&Codec::on_binary; };
-
-std::size_t
-ws_write_close(ws::close_code code, std::span<std::byte> output) noexcept;
-
-*/
+} // namespace websocket
 
 } // namespace manet::protocol

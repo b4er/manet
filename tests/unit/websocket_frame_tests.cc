@@ -38,14 +38,15 @@ TEST_CASE("parse_frame: simple unmasked text frame, short length")
      'H', 'e', 'l', 'l', 'o'}
   );
 
-  parse_output out{};
-  auto status =
-    parse_frame(std::span<const std::byte>(buf.data(), buf.size()), out);
+  detail::parse_output out{};
+  auto status = detail::parse_frame(
+    std::span<const std::byte>(buf.data(), buf.size()), out
+  );
 
-  REQUIRE(status == parse_status::ok);
+  REQUIRE(status == detail::parse_status::ok);
 
   CHECK(out.consumed == buf.size());
-  CHECK(out.frame.op == OpCode::text);
+  CHECK(out.frame.op == detail::OpCode::text);
   CHECK(out.frame.fin == true);
   CHECK(out.frame.payload_len == 5);
   CHECK(out.frame.payload.size() == 5);
@@ -72,13 +73,14 @@ TEST_CASE("parse_frame: unmasked binary frame with 16-bit extended length")
   for (std::size_t i = 0; i < payload_len; ++i)
     buf.push_back(static_cast<std::byte>('x'));
 
-  parse_output out{};
-  auto status =
-    parse_frame(std::span<const std::byte>(buf.data(), buf.size()), out);
+  detail::parse_output out{};
+  auto status = detail::parse_frame(
+    std::span<const std::byte>(buf.data(), buf.size()), out
+  );
 
-  REQUIRE(status == parse_status::ok);
+  REQUIRE(status == detail::parse_status::ok);
 
-  CHECK(out.frame.op == OpCode::binary);
+  CHECK(out.frame.op == detail::OpCode::binary);
   CHECK(out.frame.fin == true);
   CHECK(out.frame.payload_len == payload_len);
   CHECK(out.frame.payload.size() == payload_len);
@@ -109,13 +111,14 @@ TEST_CASE("parse_frame: unmasked binary frame with 64-bit extended length")
   for (uint64_t i = 0; i < payload_len; ++i)
     buf.push_back(static_cast<std::byte>('y'));
 
-  parse_output out{};
-  auto status =
-    parse_frame(std::span<const std::byte>(buf.data(), buf.size()), out);
+  detail::parse_output out{};
+  auto status = detail::parse_frame(
+    std::span<const std::byte>(buf.data(), buf.size()), out
+  );
 
-  REQUIRE(status == parse_status::ok);
+  REQUIRE(status == detail::parse_status::ok);
 
-  CHECK(out.frame.op == OpCode::binary);
+  CHECK(out.frame.op == detail::OpCode::binary);
   CHECK(out.frame.fin == true);
   CHECK(out.frame.payload_len == payload_len);
   CHECK(out.frame.payload.size() == payload_len);
@@ -133,11 +136,12 @@ TEST_CASE("parse_frame: masked frame from server is rejected")
      'h', 'e', 'y'}
   );
 
-  parse_output out{};
-  auto status =
-    parse_frame(std::span<const std::byte>(buf.data(), buf.size()), out);
+  detail::parse_output out{};
+  auto status = detail::parse_frame(
+    std::span<const std::byte>(buf.data(), buf.size()), out
+  );
 
-  CHECK(status == parse_status::masked_server);
+  CHECK(status == detail::parse_status::masked_server);
 }
 
 TEST_CASE("parse_frame: RSV bits set is rejected")
@@ -150,11 +154,12 @@ TEST_CASE("parse_frame: RSV bits set is rejected")
      'b', 'a', 'd'}
   );
 
-  parse_output out{};
-  auto status =
-    parse_frame(std::span<const std::byte>(buf.data(), buf.size()), out);
+  detail::parse_output out{};
+  auto status = detail::parse_frame(
+    std::span<const std::byte>(buf.data(), buf.size()), out
+  );
 
-  CHECK(status == parse_status::bad_reserved);
+  CHECK(status == detail::parse_status::bad_reserved);
 }
 
 TEST_CASE("parse_frame: need_more for partial header and payload")
@@ -165,33 +170,35 @@ TEST_CASE("parse_frame: need_more for partial header and payload")
       0x81 // FIN + text, but no length byte
     });
 
-    parse_output out{};
-    auto status =
-      parse_frame(std::span<const std::byte>(buf.data(), buf.size()), out);
+    detail::parse_output out{};
+    auto status = detail::parse_frame(
+      std::span<const std::byte>(buf.data(), buf.size()), out
+    );
 
-    CHECK(status == parse_status::need_more);
+    CHECK(status == detail::parse_status::need_more);
   }
 
   SUBCASE("only 3 header bytes present (len=126)")
   {
     auto buf = make_bytes({0x81, 0x7e, 'A'});
 
-    parse_output out{};
-    auto status =
-      parse_frame(std::span<const std::byte>(buf.data(), buf.size()), out);
+    detail::parse_output out{};
+    auto status = detail::parse_frame(
+      std::span<const std::byte>(buf.data(), buf.size()), out
+    );
 
-    CHECK(status == parse_status::need_more);
+    CHECK(status == detail::parse_status::need_more);
   }
 
   SUBCASE("only 3 header bytes present (len=127)")
   {
     auto buf = make_bytes({0x81, 0x7f, 'a'});
 
-    parse_output out{};
+    detail::parse_output out{};
     auto status =
       parse_frame(std::span<const std::byte>(buf.data(), buf.size()), out);
 
-    CHECK(status == parse_status::need_more);
+    CHECK(status == detail::parse_status::need_more);
   }
 
   SUBCASE("header complete but payload truncated")
@@ -203,10 +210,11 @@ TEST_CASE("parse_frame: need_more for partial header and payload")
        'H', 'i'}
     );
 
-    parse_output out{};
-    auto status =
-      parse_frame(std::span<const std::byte>(buf.data(), buf.size()), out);
+    detail::parse_output out{};
+    auto status = detail::parse_frame(
+      std::span<const std::byte>(buf.data(), buf.size()), out
+    );
 
-    CHECK(status == parse_status::need_more);
+    CHECK(status == detail::parse_status::need_more);
   }
 }

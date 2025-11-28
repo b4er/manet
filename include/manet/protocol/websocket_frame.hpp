@@ -3,7 +3,7 @@
 #include <cstdint>
 #include <span>
 
-namespace manet::protocol::websocket
+namespace manet::protocol::websocket::detail
 {
 
 enum class OpCode : uint8_t
@@ -131,4 +131,4 @@ parse_frame(std::span<const std::byte> in, parse_output &out) noexcept
   return parse_status::ok;
 }
 
-} // namespace manet::protocol::websocket
+} // namespace manet::protocol::websocket::detail

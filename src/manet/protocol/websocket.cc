@@ -1,3 +1,4 @@
+#include <arpa/inet.h>
 #include <cstring>
 #include <openssl/sha.h>
 #include <random>
@@ -6,7 +7,7 @@
 #include "manet/protocol/websocket.hpp"
 #include "manet/utils/base64.hpp"
 
-namespace manet::protocol::websocket_detail
+namespace manet::protocol::websocket::detail
 {
 
 void random_bytes(std::byte *buf, std::size_t len) noexcept
@@ -98,16 +99,17 @@ uint8_t advance_crlf_count(uint8_t crlf_counter, std::byte chr)
   }
 }
 
-Status
-read_handshake(std::array<char, 28> ws_accept_key, reactor::IO io) noexcept
+Status read_handshake(
+  std::array<char, 28> ws_accept_key, reactor::RxSource in
+) noexcept
 {
-  auto input = io.rbuf();
+  auto input = in.rbuf();
 
   // establish indices (HTTP response code, Sec-WebSocket-Accept header, HTTP
   // response end)
   uint8_t crlf_counter = 0;
   std::size_t sp_ix = 0;
-  std::size_t ws_key_ix = 0;
+  std::size_t ws_key_start = 0;
 
   std::size_t i = 0;
 
@@ -121,7 +123,7 @@ read_handshake(std::array<char, 28> ws_accept_key, reactor::IO io) noexcept
     // after a \r\n (crlf_counter == 2)
     constexpr std::string_view h = "Sec-WebSocket-Accept:";
 
-    if (ws_key_ix == 0 && crlf_counter == 2 && chr == std::byte{'S'} &&
+    if (ws_key_start == 0 && crlf_counter == 2 && chr == std::byte{'S'} &&
         i + h.size() < input.size())
     {
       // check for Sec-WebSocket-Accept
@@ -136,8 +138,8 @@ read_handshake(std::array<char, 28> ws_accept_key, reactor::IO io) noexcept
           ))
       {
         // found the header starting at i, seek index of value (skip SP)
-        ws_key_ix = i + h.size();
-        for (; input[ws_key_ix] == std::byte{' '}; ws_key_ix++)
+        ws_key_start = i + h.size();
+        for (; input[ws_key_start] == std::byte{' '}; ws_key_start++)
           ;
       }
     }
@@ -161,13 +163,16 @@ read_handshake(std::array<char, 28> ws_accept_key, reactor::IO io) noexcept
     log::trace("WebSocket handshake:\n{}", sv);
   }
 
-  // validate the HTTP response
+  // validate the HTTP response:
 
   if (crlf_counter != 4)
   {
-    log::error("invalid HTTP response: unexpected end.");
-    return Status::error;
+    log::trace("invalid HTTP response: unexpected end.");
+    return Status::ok; // without consuming -> on_data again
   }
+
+  // we consumed (i+1) bytes!
+  in.read(i + 1);
 
   if (sp_ix == 0 || input.size() <= sp_ix + 3)
   {
@@ -186,31 +191,65 @@ read_handshake(std::array<char, 28> ws_accept_key, reactor::IO io) noexcept
     return Status::error;
   }
 
-  if (ws_key_ix != 0)
+  if (ws_key_start == 0)
   {
-    std::span<const std::byte> got = input.subspan(ws_key_ix, 28);
-
-    auto got_sv =
-      std::string_view(reinterpret_cast<const char *>(got.data()), got.size());
-
-    auto expect_sv = std::string_view(
-      reinterpret_cast<const char *>(ws_accept_key.data()), ws_accept_key.size()
-    );
-
-    if (got_sv != expect_sv)
-    {
-      log::error(
-        "WebSocket error: Sec-WebSocket-Accept (expected: {}, got: {})",
-        expect_sv, got_sv
-      );
-      return Status::error;
-    }
+    log::error("WebSocket error: missing Sec-WebSocket-Accept header");
   }
 
-  // we consumed (i+1) bytes!
-  io.read(i + 1);
+  // determine end of Sec-WebSocket-Accept key
+  std::size_t ws_key_end = ws_key_start;
+  while (ws_key_end < input.size() && input[ws_key_end] != std::byte{'\r'} &&
+         input[ws_key_end] != std::byte{'\n'})
+  {
+    ws_key_end++;
+  }
+
+  std::span<const std::byte> got = input.subspan(ws_key_start, 28);
+
+  auto got_sv = std::string_view(
+    reinterpret_cast<const char *>(input.data()) + ws_key_start,
+    ws_key_end - ws_key_start
+  );
+
+  auto expect_sv = std::string_view(
+    reinterpret_cast<const char *>(ws_accept_key.data()), ws_accept_key.size()
+  );
+
+  if (got_sv != expect_sv)
+  {
+    log::error(
+      "WebSocket error: Sec-WebSocket-Accept (expected: {}, got: {})",
+      expect_sv, got_sv
+    );
+    return Status::error;
+  }
 
   return Status::ok;
 }
 
-} // namespace manet::protocol::websocket_detail
+std::size_t write_close(CloseCode code, std::span<std::byte> output) noexcept
+{
+  if (output.size() < 8)
+    return 0;
+
+  auto out = output.data();
+
+  // FIN=1, RSV=0, OPCODE=0x8 (Close)
+  out[0] = std::byte{0x88};
+  // payload length
+  out[1] = std::byte{0x80 | 2};
+
+  // MASK
+  random_bytes(out + 2, 4);
+
+  // payload
+  uint16_t net_code = htons(static_cast<uint16_t>(code));
+  auto payload = reinterpret_cast<std::byte *>(&net_code);
+
+  out[6] = out[2] ^ payload[0];
+  out[7] = out[3] ^ payload[1];
+
+  return 8;
+}
+
+} // namespace manet::protocol::websocket::detail

@@ -30,9 +30,9 @@ if(MANET_ENABLE_COVERAGE)
       # capture coverage
       COMMAND
         ${LCOV_PATH} --ignore-errors inconsistent,inconsistent --rc
-        geninfo_unexecuted_blocks=1 --capture --directory ${CMAKE_BINARY_DIR}
-        --base-directory ${CMAKE_SOURCE_DIR} --output-file coverage.info
-        --no-external
+        geninfo_unexecuted_blocks=1 --capture --all --directory
+        ${CMAKE_BINARY_DIR} --base-directory ${CMAKE_SOURCE_DIR} --output-file
+        coverage.info --no-external
       # filter
       COMMAND ${LCOV_PATH} --ignore-errors inconsistent,inconsistent --extract
               coverage.info --output-file coverage.filtered.info

@@ -53,8 +53,33 @@
               clang-tidy = {
                 name = "clang-tidy";
                 enable = true;
-                entry = "${pkgs.clang-tools}/bin/clang-tidy -p build/debug";
-                files = "\\.(c|h|cc|hpp)$";
+                entry =
+                  let
+                    # clang-tidy requires the compile_commands.json (from debug):
+                    presets = (
+                      builtins.fromJSON (builtins.readFile ./CMakePresets.json)
+                    ).configurePresets;
+
+                    debugPreset =
+                      builtins.head (builtins.filter (p: p.name == "debug") presets);
+
+                    # build/debug
+                    buildDir = debugPreset.binaryDir;
+
+                    # -D{name}={value} for all entries in debugPreset
+                    cmakeFlags = pkgs.lib.concatStringsSep " " (pkgs.lib.mapAttrsToList
+                      (name: value: "-D${name}=${builtins.toString value}")
+                      debugPreset.cacheVariables);
+
+                    # cmake configure first
+                    script = pkgs.writeShellScriptBin "clang-tidy" ''
+                      set -euo pipefail
+                      ${pkgs.cmake}/bin/cmake -S . -B ${buildDir} ${cmakeFlags}
+                      exec ${pkgs.clang-tools}/bin/clang-tidy -p ${buildDir} "$@"
+                    '';
+                  in
+                  "${script}/bin/clang-tidy";
+                files = "(^CMakePresets\\.json$)|((^|/)CMakeLists\\.txt$)|\\.(c|h|cc|hpp)$";
                 language = "system";
               };
               cmake-format.enable = true;
