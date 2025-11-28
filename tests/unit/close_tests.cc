@@ -70,7 +70,7 @@ struct CloseTest
       auto op = static_cast<uint8_t>(in[0]);
       auto len = static_cast<uint8_t>(in[1]);
 
-      if (in.size() < 2 + len)
+      if (in.size() < static_cast<std::size_t>(2 + len))
         return Status::ok; // need more
 
       // payload
@@ -128,7 +128,7 @@ struct CloseTest
       auto op = static_cast<uint8_t>(in[0]);
       auto len = static_cast<uint8_t>(in[1]);
 
-      if (in.size() < 2 + len)
+      if (in.size() < static_cast<std::size_t>(2 + len))
         return Status::ok; // need more
 
       auto payload = std::span<const std::byte>{in.data() + 2, len};
@@ -166,9 +166,6 @@ struct CloseTest
 
 } // namespace manet::protocol
 
-namespace close_tests
-{
-
 void reactor_test1_fragmented(
   std::initializer_list<std::string_view> inputs,
   std::string_view expected_output
@@ -176,7 +173,7 @@ void reactor_test1_fragmented(
 {
   for (int i = 0; i < 2; i++)
   {
-    auto actions = manet::net::gen_script(inputs);
+    auto actions = gen_script(inputs);
 
     std::string input = "";
     for (auto str : inputs)
@@ -185,27 +182,24 @@ void reactor_test1_fragmented(
     }
 
     // run with Plain transport
-    manet::reactor::test::test1<
-      manet::transport::Plain, manet::protocol::CloseTest>(
+    test1<manet::transport::Plain, manet::protocol::CloseTest>(
       i != 0, input, expected_output, actions
     );
 
     // run with ScriptedTransport (should be the almost same call structure as
     // Plain)
-    auto transport_script = manet::transport::happypath(inputs);
+    auto transport_script = happypath(inputs);
 
-    manet::reactor::test::test1<
-      manet::transport::ScriptedTransport, manet::protocol::CloseTest>(
+    test1<ScriptedTransport, manet::protocol::CloseTest>(
       i != 0, input, expected_output, actions, &transport_script
     );
   }
 }
 
-auto close_test = manet::reactor::test::test1<
-  manet::transport::Plain, manet::protocol::CloseTest>;
+auto close_test = test1<manet::transport::Plain, manet::protocol::CloseTest>;
 
-auto R = manet::net::test::FdAction::GrantRead;
-auto W = manet::net::test::FdAction::GrantWrite;
+auto R = FdAction::GrantRead;
+auto W = FdAction::GrantWrite;
 
 TEST_CASE("<CloseTest> closes eagerly (ET test)")
 {
@@ -282,7 +276,7 @@ TEST_CASE("<Plain,CloseTest> TEXT then CLOSE in one halts (no restart)")
   // [TEXT "hi"] [CLOSE "aaa"]
   std::string_view input = "\x01\x02" "hi" "\x08\x03" "aaa";
 
-  std::deque<manet::net::test::FdAction> actions = {
+  std::deque<FdAction> actions = {
     R(input.size()),
     W(4 + 5),
   };
@@ -379,7 +373,7 @@ TEST_CASE(
   for (int i = 0; i < 2; i++)
   {
     auto outputs =
-      close_test(i != 0, input, input, manet::net::gen_script({input}), {}, {});
+      close_test(i != 0, input, input, gen_script({input}), {}, {});
 
     CHECK(outputs.restarts.size() == 1);
     CHECK(outputs.restarts[0] == 0);
@@ -392,7 +386,7 @@ TEST_CASE("<Plain,CloseTest> TEXT then MULTI-CLOSE then CLOSE restarts once")
   // [TEXT "hi"] [MULTI-CLOSE "xy"] [CLOSE "z"]
   std::string_view input = "\x01\x02" "hi" "\x42\x02" "xy" "\x08\x01" "z";
 
-  std::deque<manet::net::test::FdAction> actions = {
+  std::deque<FdAction> actions = {
     // one read for all three frames, one write for all three echoes
     R(input.size()),
     W(2 + 2 + 2 + 2 + 2 + 1),
@@ -414,10 +408,7 @@ TEST_CASE(
   // invalid opcode is seen in on_shutdown and should cause error + no restart.
   std::string_view input = "\x42\x01" "m" "\xFF\x01" "x";
 
-  // Only the MULTI-CLOSE echo should be written before the error.
-  std::string_view expected = "\x42\x01" "m";
-
-  std::deque<manet::net::test::FdAction> actions = {
+  std::deque<FdAction> actions = {
     R(input.size()),
     W(6),
   };
@@ -433,9 +424,7 @@ TEST_CASE("<Plain,CloseTest> bare MULTI-CLOSE then CLOSE in one read")
   // [MULTI-CLOSE "a"] [CLOSE "b"] at once
   std::string_view input = "\x42\x01" "a" "\x08\x01" "b";
 
-  std::deque<manet::net::test::FdAction> actions = {
-    R(input.size()), W(input.size())
-  };
+  std::deque<FdAction> actions = {R(input.size()), W(input.size())};
 
   auto outputs = close_test(false, input, input, actions, {}, {});
 
@@ -443,5 +432,3 @@ TEST_CASE("<Plain,CloseTest> bare MULTI-CLOSE then CLOSE in one read")
   CHECK(outputs.restarts.size() == 1);
   CHECK(outputs.restarts[0] == 0);
 }
-
-} // namespace close_tests

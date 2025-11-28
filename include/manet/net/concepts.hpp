@@ -9,6 +9,8 @@
 namespace manet::net
 {
 
+constexpr const int poll_frequency_ms = 100;
+
 template <typename Backend>
 concept Net = requires(
   typename Backend::config_t config, typename Backend::fd_t fd,
@@ -53,8 +55,8 @@ concept Net = requires(
   { Backend::subscribe(ptr, fd, false, true) } noexcept;
   { Backend::subscribe(ptr, fd, true, true) } noexcept;
 
-  { Backend::read(fd, ptr, len) } noexcept -> std::same_as<int>;
-  { Backend::write(fd, cptr, len) } noexcept -> std::same_as<int>;
+  { Backend::read(fd, ptr, len) } noexcept -> std::same_as<std::size_t>;
+  { Backend::write(fd, cptr, len) } noexcept -> std::same_as<std::size_t>;
 
   { Backend::clear(fd) } noexcept;
 };

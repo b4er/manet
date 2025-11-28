@@ -10,17 +10,12 @@
 #include <sys/socket.h>
 #include <tuple>
 #include <unordered_map>
+#include <utility>
 #include <vector>
-
-namespace manet::net
-{
-
-namespace test
-{
 
 struct FdAction
 {
-  enum class kind_t
+  enum class kind_t : uint8_t
   {
     read_quota,
     write_quota
@@ -41,7 +36,7 @@ struct FdAction
 struct FdScript
 {
   std::deque<FdAction> actions;
-  enum class sentinel_t
+  enum class sentinel_t : uint8_t
   {
     CONNRESET,
     HUP,
@@ -80,11 +75,9 @@ struct FdState
   FdScript script;
 };
 
-} // namespace test
-
 struct TestNet
 {
-  using config_t = std::deque<test::FdScript>;
+  using config_t = std::deque<FdScript>;
   using fd_t = int;
 
   static inline bool _alive = true;
@@ -115,7 +108,7 @@ struct TestNet
 
     fd_t fd = _next_fd++;
 
-    _sockets[fd] = test::FdState{.script = std::move(_scripts.front())};
+    _sockets[fd] = FdState{.script = std::move(_scripts.front())};
     _outputs[fd] = {};
 
     _scripts.pop_front();
@@ -125,7 +118,7 @@ struct TestNet
 
   static int ioctl(fd_t, long, void *) noexcept { return 0; }
 
-  static int connect(fd_t fd, const void *sa, socklen_t l) noexcept
+  static int connect(fd_t fd, const void *, socklen_t) noexcept
   {
     if (!_sockets.contains(fd))
     {
@@ -168,16 +161,14 @@ struct TestNet
     }
   }
 
-  static int getsockopt(
-    fd_t fd, int level, int opt_name, void *opt_val, socklen_t *opt_len
-  ) noexcept
+  static int getsockopt(fd_t, int, int, void *, socklen_t *) noexcept
   {
     return 0;
   }
 
   static void apply() noexcept {}
 
-  static int read(fd_t fd, void *ptr, std::size_t len) noexcept
+  static std::size_t read(fd_t fd, void *ptr, std::size_t len) noexcept
   {
     if (!_sockets.contains(fd))
     {
@@ -203,7 +194,7 @@ struct TestNet
     return consumed;
   }
 
-  static int write(fd_t fd, const void *ptr, std::size_t len) noexcept
+  static std::size_t write(fd_t fd, const void *ptr, std::size_t len) noexcept
   {
     if (!_sockets.contains(fd) || !_outputs.contains(fd))
     {
@@ -234,7 +225,7 @@ struct TestNet
     // due to re-using the static Net, these need to completely reset:
     _alive = true;
 
-    _scripts = config;
+    _scripts = std::move(config);
     _next_fd = 0;
     _signals = 0;
     _sockets = {};
@@ -277,10 +268,10 @@ struct TestNet
           // script is done: terminate with HUP or ERR
           switch (state.script.sentinel)
           {
-          case test::FdScript::sentinel_t::HUP:
+          case FdScript::sentinel_t::HUP:
             state.hup = true;
             break;
-          case test::FdScript::sentinel_t::CONNRESET:
+          case FdScript::sentinel_t::CONNRESET:
             state.err = true;
             break;
           }
@@ -292,10 +283,10 @@ struct TestNet
 
           switch (action.kind)
           {
-          case test::FdAction::kind_t::read_quota:
+          case FdAction::kind_t::read_quota:
             state.rquota += action.quota;
             break;
-          case test::FdAction::kind_t::write_quota:
+          case FdAction::kind_t::write_quota:
             state.wquota += action.quota;
             break;
           }
@@ -405,36 +396,25 @@ struct TestNet
     s.prev_write_ready = false;
   }
 
-  static std::span<const std::byte> _output(fd_t fd)
+  static std::span<const std::byte> _output(std::size_t fd)
   {
-    if (!_outputs.contains(fd))
+    int ifd = static_cast<int>(fd);
+    if (!_outputs.contains(ifd))
       return {};
-    return std::span(_outputs[fd]);
+    return std::span(_outputs[ifd]);
   }
 
 private:
   static inline config_t _scripts;
   static inline fd_t _next_fd = 0;
   static inline std::size_t _signals = 0;
-  static inline std::unordered_map<fd_t, test::FdState> _sockets = {};
+  static inline std::unordered_map<fd_t, FdState> _sockets = {};
   static inline std::unordered_map<fd_t, std::vector<std::byte>> _outputs = {};
 };
 
-static std::deque<test::FdAction>
-gen_script(std::initializer_list<std::string_view> inputs)
-{
-  std::deque<test::FdAction> script = {};
+std::deque<FdAction> gen_script(std::initializer_list<std::string_view> inputs);
 
-  for (auto input : inputs)
-  {
-    script.push_back(test::FdAction::GrantRead(input.size()));
-    script.push_back(test::FdAction::GrantWrite(input.size()));
-  }
-
-  return script;
-}
-
-static std::string to_string(std::deque<test::FdAction> script)
+/*static std::string to_string(std::deque<FdAction> script)
 {
   std::string str;
   str.append("{");
@@ -447,10 +427,10 @@ static std::string to_string(std::deque<test::FdAction> script)
 
     switch (act.kind)
     {
-    case test::FdAction::kind_t::read_quota:
+    case FdAction::kind_t::read_quota:
       str.append("R(");
       break;
-    case test::FdAction::kind_t::write_quota:
+    case FdAction::kind_t::write_quota:
       str.append("W(");
       break;
     }
@@ -463,6 +443,4 @@ static std::string to_string(std::deque<test::FdAction> script)
   str.append("}");
 
   return str;
-}
-
-} // namespace manet::net
+}*/

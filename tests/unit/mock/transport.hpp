@@ -6,28 +6,25 @@
 #include "manet/reactor/connection.hpp"
 #include "manet/transport/status.hpp"
 
-namespace manet::transport
-{
-
 struct ScriptedTransport
 {
   struct script_t
   {
     // handshake script
-    std::deque<Status> handshake_results;
+    std::deque<manet::transport::Status> handshake_results;
 
     // read script
     std::deque<std::string> read_fragments;
-    std::deque<Status> read_status;
+    std::deque<manet::transport::Status> read_status;
 
     // write script
-    std::deque<Status> write_status;
+    std::deque<manet::transport::Status> write_status;
 
     // what the FSM wrote (share access such that we can retrieve output easily)
     std::shared_ptr<std::string> output = std::make_shared<std::string>();
 
     // shutdown script
-    std::deque<Status> shutdown_results;
+    std::deque<manet::transport::Status> shutdown_results;
   };
 
   using config_t = script_t *;
@@ -52,28 +49,28 @@ struct ScriptedTransport
       return Endpoint{script};
     }
 
-    Status handshake_step() noexcept
+    manet::transport::Status handshake_step() noexcept
     {
       if (script->handshake_results.empty())
-        return Status::ok; // default: no handshake
+        return manet::transport::Status::ok; // default: no handshake
 
       auto st = script->handshake_results.front();
       script->handshake_results.pop_front();
       return st;
     }
 
-    Status read(reactor::RxSink in) noexcept
+    manet::transport::Status read(manet::reactor::RxSink in) noexcept
     {
       if (script->read_status.empty())
-        return Status::close; // default: EOF
+        return manet::transport::Status::close; // default: EOF
 
       auto st = script->read_status.front();
       script->read_status.pop_front();
 
-      if (st == Status::ok)
+      if (st == manet::transport::Status::ok)
       {
         if (script->read_fragments.empty())
-          return Status::error; // script bug
+          return manet::transport::Status::error; // script bug
 
         auto &chunk = script->read_fragments.front();
         auto n = std::min<std::size_t>(chunk.size(), in.wbuf().size());
@@ -87,7 +84,7 @@ struct ScriptedTransport
       return st;
     }
 
-    Status write(reactor::TxSource out) noexcept
+    manet::transport::Status write(manet::reactor::TxSource out) noexcept
     {
       if (script->write_status.empty())
       {
@@ -96,13 +93,13 @@ struct ScriptedTransport
           reinterpret_cast<const char *>(out.rbuf().data()), out.rbuf().size()
         );
         out.read(out.rbuf().size());
-        return Status::ok;
+        return manet::transport::Status::ok;
       }
 
       auto st = script->write_status.front();
       script->write_status.pop_front();
 
-      if (st == Status::ok)
+      if (st == manet::transport::Status::ok)
       {
         script->output.get()->append(
           reinterpret_cast<const char *>(out.rbuf().data()), out.rbuf().size()
@@ -113,10 +110,10 @@ struct ScriptedTransport
       return st;
     }
 
-    Status shutdown_step() noexcept
+    manet::transport::Status shutdown_step() noexcept
     {
       if (script->shutdown_results.empty())
-        return Status::ok;
+        return manet::transport::Status::ok;
 
       auto st = script->shutdown_results.front();
       script->shutdown_results.pop_front();
@@ -129,9 +126,9 @@ struct ScriptedTransport
 
 inline ScriptedTransport::script_t happypath(
   std::initializer_list<std::string_view> fragments,
-  std::initializer_list<Status> handshake = {},
-  std::initializer_list<Status> write_status = {},
-  std::initializer_list<Status> shutdown = {}
+  std::initializer_list<manet::transport::Status> handshake = {},
+  std::initializer_list<manet::transport::Status> write_status = {},
+  std::initializer_list<manet::transport::Status> shutdown = {}
 )
 {
   ScriptedTransport::script_t script{};
@@ -145,12 +142,12 @@ inline ScriptedTransport::script_t happypath(
   {
     script.read_fragments.emplace_back(fragment);
 
-    // each fragment should return one Status::ok
-    script.read_status.push_back(Status::ok);
+    // each fragment should return one manet::transport::Status::ok
+    script.read_status.push_back(manet::transport::Status::ok);
   }
 
   // close
-  script.read_status.push_back(Status::close);
+  script.read_status.push_back(manet::transport::Status::close);
 
   // writes and shutdowns:
   for (auto st : write_status)
@@ -160,5 +157,3 @@ inline ScriptedTransport::script_t happypath(
 
   return script;
 }
-
-} // namespace manet::transport

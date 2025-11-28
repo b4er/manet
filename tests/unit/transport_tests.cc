@@ -20,7 +20,7 @@ struct ReadWantWriteTransport
 
   template <typename Net> struct Endpoint
   {
-    net::TestNet::fd_t fd = -1;
+    TestNet::fd_t fd = -1;
     bool first = true;
 
     static std::optional<Endpoint>
@@ -38,9 +38,9 @@ struct ReadWantWriteTransport
         return Status::want_write;
       }
 
-      // afterwards: normal read via net::TestNet
+      // afterwards: normal read via TestNet
       auto buf = in.wbuf();
-      int n = net::TestNet::read(fd, buf.data(), buf.size());
+      int n = TestNet::read(fd, buf.data(), buf.size());
 
       if (n > 0)
       {
@@ -56,7 +56,7 @@ struct ReadWantWriteTransport
     Status write(reactor::TxSource out) noexcept
     {
       auto buf = out.rbuf();
-      int n = net::TestNet::write(fd, buf.data(), buf.size());
+      int n = TestNet::write(fd, buf.data(), buf.size());
 
       if (n > 0)
       {
@@ -79,7 +79,7 @@ struct WriteWantReadTransport
 
   template <typename Net> struct Endpoint
   {
-    net::TestNet::fd_t fd = -1;
+    TestNet::fd_t fd = -1;
 
     int read_calls = 0;
     int write_calls = 0;
@@ -98,7 +98,7 @@ struct WriteWantReadTransport
       // so rquota + remaining input stay available for a combined edge later.
       if (read_calls++ == 0)
       {
-        int n = net::TestNet::read(fd, buf.data(), 1);
+        int n = TestNet::read(fd, buf.data(), 1);
         if (n > 0)
         {
           in.wrote(1);
@@ -110,7 +110,7 @@ struct WriteWantReadTransport
       }
 
       // subsequent reads are normal
-      int n = net::TestNet::read(fd, buf.data(), buf.size());
+      int n = TestNet::read(fd, buf.data(), buf.size());
       if (n > 0)
       {
         in.wrote(static_cast<std::size_t>(n));
@@ -128,9 +128,9 @@ struct WriteWantReadTransport
       if (write_calls++ == 0)
         return Status::want_read;
 
-      // retry: normal write via net::TestNet
+      // retry: normal write via TestNet
       auto buf = out.rbuf();
-      int n = net::TestNet::write(fd, buf.data(), buf.size());
+      int n = TestNet::write(fd, buf.data(), buf.size());
 
       if (n > 0)
       {
@@ -153,7 +153,7 @@ struct NoProgressWriteTransport
 
   template <typename Net> struct Endpoint
   {
-    net::TestNet::fd_t fd = -1;
+    TestNet::fd_t fd = -1;
     int write_calls = 0;
 
     static std::optional<Endpoint>
@@ -170,7 +170,7 @@ struct NoProgressWriteTransport
     Status read(reactor::RxSink in) noexcept
     {
       auto buf = in.wbuf();
-      int n = net::TestNet::read(fd, buf.data(), buf.size());
+      int n = TestNet::read(fd, buf.data(), buf.size());
 
       if (n > 0)
       {
@@ -189,13 +189,13 @@ struct NoProgressWriteTransport
       // first call: return ok but consume 0 bytes
       if (write_calls++ == 0)
       {
-        // no out.read(), no net::TestNet::write -> no progress
+        // no out.read(), no TestNet::write -> no progress
         return Status::ok;
       }
 
-      // subsequent calls: normal write via net::TestNet
+      // subsequent calls: normal write via TestNet
       auto buf = out.rbuf();
-      int n = net::TestNet::write(fd, buf.data(), buf.size());
+      int n = TestNet::write(fd, buf.data(), buf.size());
 
       if (n > 0)
       {
@@ -244,7 +244,7 @@ struct DrainWantWriteTransport
 
   template <typename Net> struct Endpoint
   {
-    net::TestNet::fd_t fd = -1;
+    TestNet::fd_t fd = -1;
     int write_calls = 0;
 
     static std::optional<Endpoint>
@@ -256,7 +256,7 @@ struct DrainWantWriteTransport
     Status read(reactor::RxSink in) noexcept
     {
       auto buf = in.wbuf();
-      int n = net::TestNet::read(fd, buf.data(), buf.size());
+      int n = TestNet::read(fd, buf.data(), buf.size());
 
       if (n > 0)
       {
@@ -278,7 +278,7 @@ struct DrainWantWriteTransport
         return Status::want_write;
 
       auto buf = out.rbuf();
-      int n = net::TestNet::write(fd, buf.data(), buf.size());
+      int n = TestNet::write(fd, buf.data(), buf.size());
 
       if (n > 0)
       {
@@ -301,7 +301,7 @@ struct DrainCloseTransport
 
   template <typename Net> struct Endpoint
   {
-    net::TestNet::fd_t fd = -1;
+    TestNet::fd_t fd = -1;
     int write_calls = 0;
 
     static std::optional<Endpoint>
@@ -313,7 +313,7 @@ struct DrainCloseTransport
     Status read(reactor::RxSink in) noexcept
     {
       auto buf = in.wbuf();
-      int n = net::TestNet::read(fd, buf.data(), buf.size());
+      int n = TestNet::read(fd, buf.data(), buf.size());
 
       if (n > 0)
       {
@@ -334,7 +334,7 @@ struct DrainCloseTransport
 
       // call1: flush anything pending, then close
       auto buf = out.rbuf();
-      int n = net::TestNet::write(fd, buf.data(), buf.size());
+      int n = TestNet::write(fd, buf.data(), buf.size());
       if (n > 0)
         out.read(static_cast<std::size_t>(n));
 
@@ -441,24 +441,24 @@ struct CloseNoShutdownProtocol
 namespace manet::transport_tests
 {
 
-auto R = manet::net::test::FdAction::GrantRead;
-auto W = manet::net::test::FdAction::GrantWrite;
+auto R = FdAction::GrantRead;
+auto W = FdAction::GrantWrite;
 
 template <typename Protocol = protocol::ReflectProtocol>
-reactor::test::ReactorOutputs scripted_test(
+ReactorOutputs scripted_test(
   bool connect_async, std::initializer_list<std::string_view> frags,
-  std::string_view expected_output, std::deque<net::test::FdAction> actions,
-  std::initializer_list<transport::Status> handshake_override = {},
-  std::initializer_list<transport::Status> read_status_override = {},
-  std::initializer_list<transport::Status> write_status_override = {},
-  std::initializer_list<transport::Status> shutdown_override = {}
+  std::string_view expected_output, std::deque<FdAction> actions,
+  std::initializer_list<manet::transport::Status> handshake_override = {},
+  std::initializer_list<manet::transport::Status> read_status_override = {},
+  std::initializer_list<manet::transport::Status> write_status_override = {},
+  std::initializer_list<manet::transport::Status> shutdown_override = {}
 )
 {
   std::string input;
   for (auto f : frags)
     input.append(f);
 
-  auto script = transport::happypath(
+  auto script = happypath(
     frags, handshake_override, write_status_override, shutdown_override
   );
 
@@ -476,7 +476,7 @@ reactor::test::ReactorOutputs scripted_test(
       script.write_status.push_back(st);
   }
 
-  return reactor::test::test1<transport::ScriptedTransport, Protocol>(
+  return test1<ScriptedTransport, Protocol>(
     connect_async, input, expected_output, std::move(actions), &script
   );
 }
@@ -487,7 +487,7 @@ TEST_CASE(
 {
   // "hello" then EOF
   std::initializer_list<std::string_view> fragments = {"hello"};
-  auto actions = net::gen_script(fragments);
+  auto actions = gen_script(fragments);
 
   for (int i = 0; i < 2; i++)
   {
@@ -507,7 +507,7 @@ TEST_CASE(
 {
   // "a", want_read, "b", then EOF
   std::initializer_list<std::string_view> fragments = {"a", "b"};
-  auto actions = net::gen_script(fragments);
+  auto actions = gen_script(fragments);
 
   // statuses: ok (read "a"), want_read (no bytes), ok (read "b"), close (EOF)
   std::initializer_list<transport::Status> read_status = {
@@ -538,18 +538,18 @@ TEST_CASE(
   // delivering data and echoing it.
   std::string_view input = "ab";
 
-  std::deque<net::test::FdAction> actions = {
+  std::deque<FdAction> actions = {
     R(2), // first readable edge -> want_write
     W(2), // next poll: readable+writeable edge together
   };
 
-  auto out = reactor::test::test1<
-    transport::ReadWantWriteTransport, protocol::ReflectProtocol>(
-    /*connect_async*/ false, input,
-    /*expected*/ input, actions
-  );
+  auto out =
+    test1<transport::ReadWantWriteTransport, protocol::ReflectProtocol>(
+      /*connect_async*/ false, input,
+      /*expected*/ input, actions
+    );
 
-  // output asserted by reactor::test::test1
+  // output asserted by test1
   CHECK(out.restarts.size() == 0);
 }
 
@@ -560,18 +560,18 @@ TEST_CASE(
   // read 1 byte -> echo -> write wants read; next combined edge retries write.
   std::string_view input = "xy";
 
-  std::deque<net::test::FdAction> actions = {
+  std::deque<FdAction> actions = {
     R(2), // readable edge; read consumes 1 byte then want_read
     W(
       2
     ), // next poll: readable+writeable edge (rquota still 1, input still "y")
   };
 
-  auto out = reactor::test::test1<
-    transport::WriteWantReadTransport, protocol::ReflectProtocol>(
-    /*connect_async*/ false, input,
-    /*expected*/ input, actions
-  );
+  auto out =
+    test1<transport::WriteWantReadTransport, protocol::ReflectProtocol>(
+      /*connect_async*/ false, input,
+      /*expected*/ input, actions
+    );
 
   CHECK(out.restarts.size() == 0);
 }
@@ -582,7 +582,7 @@ TEST_CASE(
 {
   // "xx" but transport blocks first write
   std::initializer_list<std::string_view> fragments = {"xx"};
-  std::deque<net::test::FdAction> actions = {R(2), W(2), W(2)};
+  std::deque<FdAction> actions = {R(2), W(2), W(2)};
 
   // prevent happypath EOF in the same readable event:
   // ok (deliver "xx"), then want_read (pause), no close here
@@ -619,7 +619,7 @@ TEST_CASE(
   std::initializer_list<std::string_view> fragments = {"yy"};
 
   // we only need a read edge; close happens during write from readable path
-  std::deque<net::test::FdAction> actions = {R(2)};
+  std::deque<FdAction> actions = {R(2)};
 
   std::initializer_list<transport::Status> write_status = {
     transport::Status::close,
@@ -645,7 +645,7 @@ TEST_CASE(
   // transport errors before delivering any bytes
   std::initializer_list<std::string_view> fragments = {"zz"};
 
-  std::deque<net::test::FdAction> actions = {R(2)};
+  std::deque<FdAction> actions = {R(2)};
 
   std::initializer_list<transport::Status> read_status = {
     transport::Status::error,
@@ -669,7 +669,7 @@ TEST_CASE(
 {
   // "hi" after handshake ok
   std::initializer_list<std::string_view> fragments = {"hi"};
-  auto actions = net::gen_script(fragments);
+  auto actions = gen_script(fragments);
 
   std::initializer_list<transport::Status> handshake_status = {
     transport::Status::ok,
@@ -694,7 +694,7 @@ TEST_CASE(
 {
   // want_read, then ok; same readable edge also drives first protocol read
   std::initializer_list<std::string_view> fragments = {"x"};
-  auto actions = net::gen_script(fragments);
+  auto actions = gen_script(fragments);
 
   std::initializer_list<transport::Status> handshake_status = {
     transport::Status::want_read,
@@ -721,7 +721,7 @@ TEST_CASE(
   // want_write, then ok; writeable edge unblocks handshake
   std::initializer_list<std::string_view> fragments = {"hi"};
 
-  std::deque<net::test::FdAction> actions = {
+  std::deque<FdAction> actions = {
     W(1), // handshake want_write edge
     R(2),
     W(2),
@@ -751,7 +751,7 @@ TEST_CASE(
 {
   // handshake fails eagerly
   std::initializer_list<std::string_view> fragments = {};
-  std::deque<net::test::FdAction> actions = {};
+  std::deque<FdAction> actions = {};
 
   std::initializer_list<transport::Status> handshake_status = {
     transport::Status::close,
@@ -775,7 +775,7 @@ TEST_CASE(
 {
   // handshake fails eagerly
   std::initializer_list<std::string_view> fragments = {};
-  std::deque<net::test::FdAction> actions = {};
+  std::deque<FdAction> actions = {};
 
   std::initializer_list<transport::Status> handshake_status = {
     transport::Status::error,
@@ -797,7 +797,7 @@ TEST_CASE("<ScriptedTransport,ReflectProtocol> shutdown ok closes cleanly")
 {
   // "ok" then EOF -> CloseTransport -> shutdown ok -> Closed
   std::initializer_list<std::string_view> fragments = {"ok"};
-  auto actions = net::gen_script(fragments);
+  auto actions = gen_script(fragments);
 
   std::initializer_list<transport::Status> shutdown_status = {
     transport::Status::ok,
@@ -823,7 +823,7 @@ TEST_CASE("<ScriptedTransport,ReflectProtocol> shutdown want_write then ok")
   // writeable edge
   std::initializer_list<std::string_view> fragments = {"hi"};
 
-  std::deque<net::test::FdAction> actions = {
+  std::deque<FdAction> actions = {
     R(2),
     W(1), // writeable edge for shutdown want_write
   };
@@ -853,7 +853,7 @@ TEST_CASE("<ScriptedTransport,ReflectProtocol> shutdown want_read then ok")
   // readable edge
   std::initializer_list<std::string_view> fragments = {"hi"};
 
-  std::deque<net::test::FdAction> actions = {
+  std::deque<FdAction> actions = {
     R(2),
     R(1), // readable edge for shutdown want_read
   };
@@ -883,7 +883,7 @@ TEST_CASE(
 {
   // EOF enters CloseTransport; shutdown close -> Error
   std::initializer_list<std::string_view> fragments = {"x"};
-  auto actions = net::gen_script(fragments);
+  auto actions = gen_script(fragments);
 
   std::initializer_list<transport::Status> shutdown_status = {
     transport::Status::close,
@@ -908,7 +908,7 @@ TEST_CASE(
 {
   // EOF enters CloseTransport; shutdown error -> Error
   std::initializer_list<std::string_view> fragments = {"x"};
-  auto actions = net::gen_script(fragments);
+  auto actions = gen_script(fragments);
 
   std::initializer_list<transport::Status> shutdown_status = {
     transport::Status::error,
@@ -931,7 +931,7 @@ TEST_CASE("<ScriptedTransport,ReflectProtocol> handshake ok enters Protocol")
 {
   // no payload, single handshake_step = ok
   std::initializer_list<std::string_view> fragments = {};
-  std::deque<net::test::FdAction> actions = {};
+  std::deque<FdAction> actions = {};
 
   std::initializer_list<transport::Status> handshake = {
     transport::Status::ok,
@@ -953,7 +953,7 @@ TEST_CASE("<ScriptedTransport,ReflectProtocol> handshake want_read then ok")
 {
   // no payload, handshake: want_read, then ok
   std::initializer_list<std::string_view> fragments = {};
-  std::deque<net::test::FdAction> actions = {};
+  std::deque<FdAction> actions = {};
 
   std::initializer_list<transport::Status> handshake = {
     transport::Status::want_read,
@@ -975,7 +975,7 @@ TEST_CASE("<ScriptedTransport,ReflectProtocol> handshake want_write then ok")
 {
   // no payload, handshake: want_write, then ok
   std::initializer_list<std::string_view> fragments = {};
-  std::deque<net::test::FdAction> actions = {};
+  std::deque<FdAction> actions = {};
 
   std::initializer_list<transport::Status> handshake = {
     transport::Status::want_write,
@@ -999,7 +999,7 @@ TEST_CASE(
 {
   // handshake_step returns close immediately
   std::initializer_list<std::string_view> fragments = {};
-  std::deque<net::test::FdAction> actions = {};
+  std::deque<FdAction> actions = {};
 
   std::initializer_list<transport::Status> handshake = {
     transport::Status::close,
@@ -1023,7 +1023,7 @@ TEST_CASE(
 {
   // handshake_step returns error immediately
   std::initializer_list<std::string_view> fragments = {};
-  std::deque<net::test::FdAction> actions = {};
+  std::deque<FdAction> actions = {};
 
   std::initializer_list<transport::Status> handshake = {
     transport::Status::error,
@@ -1047,7 +1047,7 @@ TEST_CASE(
 {
   // "hello" then EOF; transport shutdown_step returns close
   std::initializer_list<std::string_view> fragments = {"hello"};
-  auto actions = net::gen_script(fragments);
+  auto actions = gen_script(fragments);
 
   std::initializer_list<transport::Status> shutdown = {
     transport::Status::close,
@@ -1075,19 +1075,18 @@ TEST_CASE(
   // single byte "x", first write ok-but-no-progress,
   // second writeable edge flushes.
   std::string_view input = "x";
-  std::initializer_list<std::string_view> fragments = {input};
 
-  std::deque<net::test::FdAction> actions = {
+  std::deque<FdAction> actions = {
     R(input.size()),
     W(1), // triggers ok-but-no-progress -> arm want_write
     W(1), // retry flushes
   };
 
-  auto outputs = reactor::test::test1<
-    transport::NoProgressWriteTransport, protocol::ReflectProtocol>(
-    /*connect_async*/ false, input,
-    /*expected_output*/ input, actions
-  );
+  auto outputs =
+    test1<transport::NoProgressWriteTransport, protocol::ReflectProtocol>(
+      /*connect_async*/ false, input,
+      /*expected_output*/ input, actions
+    );
 
   // We can't require all_done because Protocol ignores close-only HUP edges.
   CHECK(outputs.restarts.size() == 0);
@@ -1104,20 +1103,19 @@ TEST_CASE(
   //   - finally transport_write(false) drains TX and returns ok ->
   //   CloseTransport->Closed
   std::string_view input = "xy";
-  std::initializer_list<std::string_view> fragments = {input};
 
   // One read event, and enough writeable edges for:
   //   - close-branch transport_write
   //   - DrainProtocol write want_write
   //   - DrainProtocol final ok write
-  std::deque<net::test::FdAction> actions = {
+  std::deque<FdAction> actions = {
     R(input.size()),
     W(input.size()),
     W(input.size()),
     W(input.size()),
   };
 
-  auto outputs = reactor::test::test1<
+  auto outputs = test1<
     transport::DrainWantWriteTransport, protocol::CloseAfterWriteProtocol>(
     /*connect_async*/ false, input,
     /*expected_output*/ input, actions
@@ -1138,12 +1136,10 @@ TEST_CASE(
   for (int i = 0; i < 2; i++)
   {
     // async connect needs a writeable edge to finish connect
-    std::deque<net::test::FdAction> actions =
-      (i != 0) ? std::deque<net::test::FdAction>{W(1)}
-               : std::deque<net::test::FdAction>{};
+    std::deque<FdAction> actions =
+      (i != 0) ? std::deque<FdAction>{W(1)} : std::deque<FdAction>{};
 
-    auto out = reactor::test::test1<
-      transport::InitFailTransport, protocol::ReflectProtocol>(
+    auto out = test1<transport::InitFailTransport, protocol::ReflectProtocol>(
       i != 0, input, /*expected*/ "", actions
     );
 
@@ -1161,18 +1157,17 @@ TEST_CASE(
   // but from the outside we only assert: echo is correct and we finish.
   std::string_view input = "abcd";
 
-  std::deque<net::test::FdAction> actions = {
+  std::deque<FdAction> actions = {
     R(input.size()),
     W(1), // partial write, then EAGAIN -> want_write
     W(2), // more bytes
     W(1), // drain remaining byte
   };
 
-  auto outputs =
-    reactor::test::test1<transport::Plain, protocol::CloseNoShutdownProtocol>(
-      /*connect_async*/ false, input,
-      /*expected_output*/ input, actions
-    );
+  auto outputs = test1<transport::Plain, protocol::CloseNoShutdownProtocol>(
+    /*connect_async*/ false, input,
+    /*expected_output*/ input, actions
+  );
 
   CHECK(outputs.all_done);
   CHECK(outputs.restarts.size() == 1);
@@ -1188,16 +1183,15 @@ TEST_CASE(
   // CloseTransport.
   std::string_view input = "hi";
 
-  std::deque<net::test::FdAction> actions = {
+  std::deque<FdAction> actions = {
     R(input.size()),
     W(input.size()),
   };
 
-  auto outputs =
-    reactor::test::test1<transport::Plain, protocol::CloseNoShutdownProtocol>(
-      /*connect_async*/ false, input,
-      /*expected_output*/ input, actions
-    );
+  auto outputs = test1<transport::Plain, protocol::CloseNoShutdownProtocol>(
+    /*connect_async*/ false, input,
+    /*expected_output*/ input, actions
+  );
 
   CHECK(outputs.all_done);
   CHECK(outputs.restarts.size() == 1);

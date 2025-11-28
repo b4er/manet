@@ -7,7 +7,7 @@
 
 #include <manet/protocol/websocket_frame.hpp>
 
-using namespace manet::protocol::ws;
+using namespace manet::protocol::websocket;
 
 // helper to make readable byte buffers
 static std::vector<std::byte> make_bytes(std::initializer_list<uint8_t> bytes)

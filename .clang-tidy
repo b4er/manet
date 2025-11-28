@@ -1,0 +1,22 @@
+---
+Checks: >
+  clang-diagnostic-*,
+  clang-analyzer-*,
+
+  bugprone-*,
+  portability-*,
+  -portability-avoid-pragma-once,
+  -portability-template-virtual-member-function,
+  performance-*,
+
+  readability-identifier-naming,
+  readability-function-cognitive-complexity,
+  readability-redundant-*
+
+WarningsAsErrors: ''
+
+HeaderFilterRegex: '(^|/)(src|include|examples)/'
+
+CheckOptions:
+- key: readability-function-cognitive-complexity.Threshold
+  value: 30

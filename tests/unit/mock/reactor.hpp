@@ -1,16 +1,15 @@
 #pragma once
 #include <doctest/doctest.h>
 
+#include <utility>
+
 #include "net.hpp"
 #include "transport.hpp"
-
-namespace manet::reactor::test
-{
 
 template <typename... Connections> class TestReactor
 {
 public:
-  using event_t = typename net::TestNet::event_t;
+  using event_t = typename TestNet::event_t;
 
   static constexpr std::size_t NUM_CONNECTIONS = sizeof...(Connections);
   static constexpr std::size_t NUM_EVENTS = NUM_CONNECTIONS + 1;
@@ -25,13 +24,11 @@ public:
   std::vector<int> restarts = {};
 
   template <typename... Configs>
-  TestReactor(
-    net::TestNet::config_t &config, const std::tuple<Configs...> &cfgs
-  )
+  TestReactor(TestNet::config_t &config, const std::tuple<Configs...> &cfgs)
   {
-    net::TestNet::init(config);
+    TestNet::init(config);
     init(cfgs, std::make_index_sequence<NUM_CONNECTIONS>{});
-    net::TestNet::run(loop, this);
+    TestNet::run(loop, this);
   }
 
   static std::vector<std::span<const std::byte>> outputs() noexcept
@@ -39,9 +36,9 @@ public:
     std::vector<std::span<const std::byte>> res;
     res.reserve(NUM_CONNECTIONS);
 
-    for (int i = 0; i < NUM_CONNECTIONS; i++)
+    for (std::size_t i = 0; i < NUM_CONNECTIONS; i++)
     {
-      res.emplace_back(net::TestNet::_output(i));
+      res.emplace_back(TestNet::_output(i));
     }
 
     return res;
@@ -74,14 +71,17 @@ private:
   {
     using Conn = std::tuple_element_t<I, std::tuple<Connections...>>;
 
-    constexpr std::string_view host = "localhost";
-    constexpr uint16_t port = 101;
+    std::string host = "localhost";
+    uint16_t port = 101;
 
     auto &opt = std::get<I>(connections);
-    opt.emplace(host, port, std::get<0>(cfg), std::get<1>(cfg));
+    opt.emplace(
+      std::move(host), port, std::move(std::get<0>(cfg)),
+      std::move(std::get<1>(cfg))
+    );
 
     Conn *conn = std::addressof(*opt);
-    conn->attach(static_cast<BaseConnection<net::TestNet> *>(conn));
+    conn->attach(static_cast<manet::reactor::BaseConnection<TestNet> *>(conn));
 
     _conn_ids[conn] = I;
   }
@@ -90,18 +90,18 @@ private:
   {
     auto *self = static_cast<TestReactor *>(data);
 
-    int nevents = net::TestNet::poll(self->events.data(), NUM_EVENTS);
+    int nevents = TestNet::poll(self->events.data(), NUM_EVENTS);
     if (nevents < 0)
     {
-      utils::error("poll failed");
-      net::TestNet::stop();
+      manet::utils::error("poll failed");
+      TestNet::stop();
     }
 
     for (int i = 0; i < nevents; i++)
     {
       auto &ev = self->events[i];
 
-      auto kill = net::TestNet::ev_signal(ev);
+      auto kill = TestNet::ev_signal(ev);
       if (kill)
       {
         if (!self->stopping)
@@ -112,8 +112,8 @@ private:
       }
       else
       {
-        void *ptr = net::TestNet::get_user_data(ev);
-        auto conn = static_cast<BaseConnection<net::TestNet> *>(ptr);
+        void *ptr = TestNet::get_user_data(ev);
+        auto conn = static_cast<manet::reactor::BaseConnection<TestNet> *>(ptr);
 
         if (!conn->done())
         {
@@ -129,7 +129,7 @@ private:
 
       if (self->stopping && self->all_done())
       {
-        net::TestNet::stop();
+        TestNet::stop();
       }
     }
 
@@ -167,19 +167,19 @@ struct ReactorOutputs
 template <typename Transport, typename Protocol>
 ReactorOutputs test1(
   bool connect_async, std::string_view input, std::string_view expected_output,
-  std::deque<net::test::FdAction> actions,
+  std::deque<FdAction> actions,
   typename Transport::config_t transport_cfg = typename Transport::config_t{},
   typename Protocol::config_t protocol_cfg = typename Protocol::config_t{}
 ) noexcept
 {
-  std::deque<net::test::FdScript> scripts = {net::test::FdScript{
-    .actions = actions,
-    .sentinel = net::test::FdScript::sentinel_t::HUP,
+  std::deque<FdScript> scripts = {FdScript{
+    .actions = std::move(actions),
+    .sentinel = FdScript::sentinel_t::HUP,
     .input = {reinterpret_cast<const std::byte *>(input.data()), input.size()},
     .connect_async = connect_async,
   }};
 
-  TestReactor<Connection<net::TestNet, Transport, Protocol>> reactor(
+  TestReactor<manet::reactor::Connection<TestNet, Transport, Protocol>> reactor(
     scripts, std::make_tuple(std::make_tuple(transport_cfg, protocol_cfg))
   );
 
@@ -188,7 +188,7 @@ ReactorOutputs test1(
   // determine the written output:
   std::string_view out_sv;
 
-  if constexpr (std::is_same_v<Transport, transport::ScriptedTransport>)
+  if constexpr (std::is_same_v<Transport, ScriptedTransport>)
   {
     out_sv = std::string_view{
       transport_cfg->output->data(), transport_cfg->output->size()
@@ -205,12 +205,11 @@ ReactorOutputs test1(
 
   // assert output
   CHECK_MESSAGE(
-    out_sv == expected_output, "output:   ", utils::readable_ascii(out_sv),
-    "\n          expected: ", utils::readable_ascii(expected_output)
+    out_sv == expected_output,
+    "output:   ", manet::utils::readable_ascii(out_sv),
+    "\n          expected: ", manet::utils::readable_ascii(expected_output)
   );
 
   // return a couple of extra outputs to validate:
   return {reactor.restarts, reactor.counter, reactor.all_done()};
 }
-
-} // namespace manet::reactor::test

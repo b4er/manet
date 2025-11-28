@@ -6,10 +6,10 @@ namespace manet::utils
 /** simple %-encoding and hexformat unreadable chars */
 std::string readable_ascii(std::string_view input_str)
 {
-  std::string str = "";
+  std::string str;
   str.reserve(input_str.size());
 
-  for (int i = 0; i < input_str.size(); i++)
+  for (std::size_t i = 0; i < input_str.size(); i++)
   {
     auto c = input_str[i];
 
@@ -65,7 +65,7 @@ std::string hexdump(std::span<const std::byte> s, std::size_t base)
     for (std::size_t j = 0; j < n; ++j)
     {
       unsigned c = u8(s[i + j]);
-      out += (c >= 32 && c <= 126) ? static_cast<char>(c) : '.';
+      out += (31 < c && c < 127) ? static_cast<char>(c) : '.';
     }
     out += "|\n";
   }

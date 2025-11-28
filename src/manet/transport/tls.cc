@@ -1,5 +1,3 @@
-#pragma once
-
 #include "manet/transport/tls.hpp"
 #include "manet/transport/status.hpp"
 
@@ -38,7 +36,14 @@ Status TlsEndpoint::handshake_step() noexcept
 
 Status TlsEndpoint::read(reactor::RxSink in) noexcept
 {
-  const int len = SSL_read(ssl_ctx, in.wbuf().data(), in.wbuf().size());
+  constexpr auto max_int_size_t =
+    static_cast<std::size_t>(std::numeric_limits<int>::max());
+
+  // clamp
+  const auto sz =
+    in.wbuf().size() < max_int_size_t ? in.wbuf().size() : max_int_size_t;
+
+  const int len = SSL_read(ssl_ctx, in.wbuf().data(), static_cast<int>(sz));
   if (len > 0)
   {
     in.wrote(len);
@@ -54,7 +59,13 @@ Status TlsEndpoint::read(reactor::RxSink in) noexcept
 
 Status TlsEndpoint::write(reactor::TxSource out) noexcept
 {
-  const int len = SSL_write(ssl_ctx, out.rbuf().data(), out.rbuf().size());
+  constexpr auto max_int_size_t =
+    static_cast<std::size_t>(std::numeric_limits<int>::max());
+
+  const auto sz =
+    out.rbuf().size() < max_int_size_t ? out.rbuf().size() : max_int_size_t;
+
+  const int len = SSL_write(ssl_ctx, out.rbuf().data(), static_cast<int>(sz));
   if (len > 0)
   {
     out.read(len);

@@ -1,6 +1,9 @@
 #pragma once
 
+#include <cstdio>
+#include <errno.h>
 #include <netdb.h>
+#include <string>
 #include <string_view>
 #include <sys/ioctl.h>
 
@@ -14,11 +17,9 @@ template <typename Net> struct DialResult
 };
 
 template <typename Net>
-DialResult<Net> dial(std::string_view host, uint16_t port) noexcept
+DialResult<Net> dial(const char *host, uint16_t port) noexcept
 {
-  DialResult<Net> result{};
-  result.fd = -1;
-  result.err = ECONNREFUSED;
+  DialResult<Net> result = {.fd = -1, .err = ECONNREFUSED};
 
   struct addrinfo hints = {};
   hints.ai_family = AF_INET;
@@ -26,11 +27,9 @@ DialResult<Net> dial(std::string_view host, uint16_t port) noexcept
   hints.ai_protocol = IPPROTO_TCP;
   hints.ai_flags = AI_ADDRCONFIG;
 
-  char sport[16] = {};
-  snprintf(sport, sizeof sport, "%u", static_cast<unsigned>(port));
-
+  auto sport = std::to_string(static_cast<unsigned>(port));
   struct addrinfo *res = NULL, *ai = NULL;
-  int gai = getaddrinfo(host.data(), sport, &hints, &res);
+  int gai = getaddrinfo(host, sport.c_str(), &hints, &res);
 
   if (gai != 0)
   {

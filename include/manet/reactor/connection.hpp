@@ -91,16 +91,17 @@ public:
   using Session = typename Protocol::Session;
 
   Connection(
-    std::string_view host, uint16_t port,
+    const std::string &host, uint16_t port,
     typename Transport::config_t transport_config,
     typename Protocol::config_t protocol_config
   )
-      : _host(host),
-        _port(port),
+      : _protocol(Session{host, port, protocol_config}),
         _transport_config(std::move(transport_config)),
         _protocol_config(std::move(protocol_config)),
-        _protocol(Session{_host, _port, _protocol_config}),
-        _state(state_t::uninitialized)
+        _host(host),
+        _fd(-1),
+        _state(state_t::uninitialized),
+        _port(port)
   {
     static_assert(std::is_nothrow_move_assignable_v<Endpoint>);
     static_assert(std::is_nothrow_move_constructible_v<Endpoint>);
@@ -244,23 +245,21 @@ private:
     }
   }
 
-  std::string_view _host;
-  uint16_t _port;
-
-  state_t _state;
-
-  typename Net::fd_t _fd = -1;
-
   Buffer<RX_CAP> _rx;
   Buffer<TX_CAP> _tx;
-
-  typename Transport::config_t _transport_config;
-  typename Protocol::config_t _protocol_config;
 
   Endpoint _transport;
   Session _protocol;
 
+  typename Transport::config_t _transport_config;
+  typename Protocol::config_t _protocol_config;
+
+  const std::string _host;
   void *_cookie = nullptr;
+
+  typename Net::fd_t _fd;
+  state_t _state;
+  uint16_t _port;
 
   void steps(typename Net::event_t *ev) noexcept
   {
@@ -327,7 +326,7 @@ private:
     _rx.clear();
     _tx.clear();
 
-    net::DialResult<Net> result = net::dial<Net>(_host, _port);
+    net::DialResult<Net> result = net::dial<Net>(_host.c_str(), _port);
 
     if (result.fd == -1)
     {

@@ -30,14 +30,18 @@ template <typename Transport, typename Protocol> struct ConnectionConfig
 template <typename Net, typename... Connections> class Reactor
 {
 public:
-  template <typename... Configs>
-  void run(Net::config_t &config, const std::tuple<Configs...> &configs)
-  {
-    static_assert(
-      sizeof...(Configs) == NUM_CONNECTIONS,
-      "invalid Configs (must match Connections)"
-    );
+  using net_config_t = typename Net::config_t;
 
+  template <typename Conn>
+  using conn_config_t = ConnectionConfig<
+    typename Conn::transport_type, typename Conn::protocol_type>;
+
+  // configs tuple matching Connections
+  using configs_t = std::tuple<conn_config_t<Connections>...>;
+
+  template <typename... Configs>
+  void run(net_config_t &config, configs_t configs)
+  {
     manet::utils::info("initialising net ({})", Net::name);
     Net::init(config);
 
@@ -78,7 +82,8 @@ private:
 
     auto &opt = std::get<I>(connections);
     opt.emplace(
-      config.host, config.port, config.transport_config, config.protocol_config
+      std::move(config.host), config.port, std::move(config.transport_config),
+      std::move(config.protocol_config)
     );
 
     Conn *conn = std::addressof(*opt);

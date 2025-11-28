@@ -38,7 +38,7 @@ struct EchoTest
 
       auto L = std::min(r, w);
 
-      for (int i = 0; i < L; i++)
+      for (std::size_t i = 0; i < L; i++)
       {
         io.wbuf().data()[i] = io.rbuf()[i];
       }
@@ -56,12 +56,10 @@ struct EchoTest
 namespace echo_tests
 {
 
-#define ECHO_TEST                                                              \
-  manet::reactor::test::test1<                                                 \
-    manet::transport::Plain, manet::protocol::EchoTest>
+#define ECHO_TEST test1<manet::transport::Plain, manet::protocol::EchoTest>
 
-auto R = manet::net::test::FdAction::GrantRead;
-auto W = manet::net::test::FdAction::GrantWrite;
+auto R = FdAction::GrantRead;
+auto W = FdAction::GrantWrite;
 
 TEST_CASE("asynchronous connect<Plain,EchoTest>()")
 {
@@ -106,10 +104,12 @@ test_all_interleavings_after_connect(bool async, std::string const &input)
 
     for (std::uint64_t mask = 0; mask < all_masks; ++mask)
     {
-      if (std::popcount(mask) != l)
+      if (static_cast<std::size_t>(std::popcount(mask)) != l)
+      {
         continue; // exactly l reads
+      }
 
-      std::deque<manet::net::test::FdAction> acts;
+      std::deque<FdAction> acts;
       acts.push_back(W(2)); // fund "AB" first
 
       std::size_t rleft = l, wleft = l;
@@ -165,10 +165,12 @@ test_all_interleavings_everything(bool async, std::string const &input)
 
     for (std::uint64_t mask = 0; mask < all_masks; ++mask)
     {
-      if (std::popcount(mask) != l)
+      if (static_cast<std::size_t>(std::popcount(mask)) != l)
+      {
         continue; // positions of reads
+      }
 
-      std::deque<manet::net::test::FdAction> acts;
+      std::deque<FdAction> acts;
       std::size_t rleft = l, wleft = 2 + l;
       bool ok = true;
 
@@ -214,7 +216,7 @@ TEST_CASE("interleavings")
 
   std::string input = "12345";
 
-  for (int i = 1; i < input.size(); i++)
+  for (std::size_t i = 1; i < input.size(); i++)
   {
     test_all_interleavings_after_connect(false, input.substr(0, i));
     test_all_interleavings_everything(false, input.substr(0, i));

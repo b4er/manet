@@ -3,7 +3,7 @@
 #include <cstdint>
 #include <span>
 
-namespace manet::protocol::ws
+namespace manet::protocol::websocket
 {
 
 enum class OpCode : uint8_t
@@ -29,7 +29,7 @@ enum class CloseCode : uint16_t
   internal_error = 1011,
 };
 
-enum class parse_status
+enum class parse_status : uint8_t
 {
   ok,
   need_more,
@@ -131,4 +131,4 @@ parse_frame(std::span<const std::byte> in, parse_output &out) noexcept
   return parse_status::ok;
 }
 
-} // namespace manet::protocol::ws
+} // namespace manet::protocol::websocket

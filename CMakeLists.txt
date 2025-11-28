@@ -22,6 +22,8 @@ endif()
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+add_compile_options(-Wall -Wextra -Wpedantic -Warray-bounds)
+
 # --- dependencies
 find_package(OpenSSL REQUIRED)
 

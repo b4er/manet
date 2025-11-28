@@ -1,5 +1,6 @@
 #include <stdexcept>
 
+#include "manet/net/concepts.hpp"
 #include "manet/net/fstack.hpp"
 #include "manet/utils/logging.hpp"
 
@@ -36,12 +37,12 @@ int FStack::getsockopt(
   return ff_getsockopt(fd, level, opt_name, opt_val, opt_len);
 }
 
-int FStack::read(fd_t fd, void *buf, std::size_t len) noexcept
+std::size_t FStack::read(fd_t fd, void *buf, std::size_t len) noexcept
 {
   return ff_read(fd, buf, len);
 }
 
-int FStack::write(fd_t fd, const void *buf, std::size_t len) noexcept
+std::size_t FStack::write(fd_t fd, const void *buf, std::size_t len) noexcept
 {
   return ff_write(fd, buf, len);
 }
@@ -77,9 +78,15 @@ int FStack::poll(event_t events[], std::size_t len) noexcept
 {
   struct timespec ts;
   ts.tv_sec = 0;
-  ts.tv_nsec = 100 * 1000 * 1000; // 100 ms
+  ts.tv_nsec = poll_frequency_ms * 1000 * 1000; // NOLINT
 
-  return ff_kevent(_kq, NULL, 0, events, len, &ts);
+  constexpr auto max_int_size_t =
+    static_cast<std::size_t>(std::numeric_limits<int>::max());
+
+  // clamp
+  len = len < max_int_size_t ? len : max_int_size_t;
+
+  return ff_kevent(_kq, NULL, 0, events, static_cast<int>(len), &ts);
 }
 
 void FStack::signal() noexcept

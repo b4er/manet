@@ -47,9 +47,10 @@ int main(int argc, char *argv[])
   int sig;
   sigwait(&set, &sig);
 
+  manet::utils::trace("net signal halt", sig);
   Net::signal();
 
-  // shutdown threads:
+  // wait for graceful shutdown:
   pthread_join(t_net, nullptr);
   manet::utils::warn("net halted (signal={})", sig);
 

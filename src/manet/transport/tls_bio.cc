@@ -43,11 +43,8 @@ long bio_ctrl(BIO *bio, int cmd, long, void *ptr)
   {
     return 1;
   }
-  case BIO_CTRL_PENDING:
-  case BIO_CTRL_WPENDING:
-  {
-    return 0;
-  }
+  // case BIO_CTRL_PENDING:
+  // case BIO_CTRL_WPENDING:
   default:
   {
     return 0;

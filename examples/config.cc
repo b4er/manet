@@ -91,7 +91,7 @@ Config get_config(int argc, char *argv[])
   auto api_key = api_cstr ? std::string{api_cstr} : "";
   if (api_key == "")
   {
-    std::cerr << "MBX_APIKEY is not set!" << std::endl;
+    std::cerr << "MBX_APIKEY is not set!" << '\n';
     exit(1);
   }
 

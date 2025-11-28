@@ -50,6 +50,13 @@
 
             hooks = {
               clang-format.enable = true;
+              clang-tidy = {
+                name = "clang-tidy";
+                enable = true;
+                entry = "${pkgs.clang-tools}/bin/clang-tidy -p build/debug";
+                files = "\\.(c|h|cc|hpp)$";
+                language = "system";
+              };
               cmake-format.enable = true;
               end-of-file-fixer.enable = true;
               nixpkgs-fmt.enable = true;

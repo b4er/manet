@@ -28,8 +28,8 @@ struct FStack
     fd_t fd, int level, int opt_name, void *opt_val, socklen_t *opt_len
   ) noexcept;
 
-  static int read(fd_t fd, void *buf, std::size_t len) noexcept;
-  static int write(fd_t fd, const void *buf, std::size_t len) noexcept;
+  static std::size_t read(fd_t fd, void *buf, std::size_t len) noexcept;
+  static std::size_t write(fd_t fd, const void *buf, std::size_t len) noexcept;
 
   // reactor lifecycle
   static void init(config_t config);
