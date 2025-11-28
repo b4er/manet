@@ -35,14 +35,21 @@ Handshake make_handshake(
   req.reserve(512);
 
   // build request line & headers
+  // clang-format off
   std::format_to(
     std::back_inserter(req),
-    "GET {} HTTP/1.1\r\n" "Host: {}\r\n" "Upgrade: websocket\r\n" "Connection" ": " "Upgrade\r" "\n" "Sec-" "WebSo" "cket-" "Key: " "{}" "\r\n" "Sec-WebSocket-Version: 13\r\n",
+    "GET {} HTTP/1.1\r\n"
+    "Host: {}\r\n"
+    "Upgrade: websocket\r\n"
+    "Connection: Upgrade\r\n"
+    "Sec-WebSocket-Key: {}\r\n"
+    "Sec-WebSocket-Version: 13\r\n",
     path, host,
     std::string_view(
       reinterpret_cast<const char *>(key_b64.data()), key_b64.size()
     )
   );
+  // clang-format on
 
   for (const auto &h : extra)
   {
