@@ -84,16 +84,16 @@ struct WebSocket
     Codec codec;
 
     Session(
-      const std::string &host, uint16_t /*port*/, config_t config
+      std::string_view host, uint16_t /*port*/, const config_t &config
     ) noexcept
         : host(host),
           path(config.path),
           extra(config.extra),
-          codec(std::move(config.codec_config))
+          codec(config.codec_config)
     {
     }
 
-    Status on_connect(reactor::TxSink output) noexcept
+    Status on_connect(reactor::IO output) noexcept
     {
       auto handshake = detail::make_handshake(host, path, extra);
       auto out = output.wbuf();
@@ -133,12 +133,15 @@ struct WebSocket
       }
       case State::listening:
         return dispatch_frame(io);
+
+      default:
+        break;
       }
 
       return Status::error;
     }
 
-    Status on_shutdown(reactor::TxSink output) noexcept
+    Status on_shutdown(reactor::IO io) noexcept
     {
       detail::CloseCode close_code;
 
@@ -151,8 +154,8 @@ struct WebSocket
         close_code = detail::CloseCode::normal;
       }
 
-      auto sent = detail::write_close(close_code, output.wbuf());
-      output.wrote(sent);
+      auto sent = detail::write_close(close_code, io.wbuf());
+      io.wrote(sent);
 
       return 0 < sent ? Status::close : Status::error;
     }
@@ -260,7 +263,7 @@ struct WebSocket
       case detail::OpCode::cont:
       {
         log::warn("WebSocket::CONT nothing to handle");
-        return Status::ok;
+        break;
       }
       case detail::OpCode::text:
       {
@@ -359,9 +362,11 @@ struct WebSocket
       }
       case detail::OpCode::pong:
       {
-        return Status::ok;
+        break;
       }
       }
+
+      return Status::ok;
     }
   };
 };

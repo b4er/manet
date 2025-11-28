@@ -32,15 +32,8 @@ template <typename Net, typename... Connections> class Reactor
 public:
   using net_config_t = typename Net::config_t;
 
-  template <typename Conn>
-  using conn_config_t = ConnectionConfig<
-    typename Conn::transport_type, typename Conn::protocol_type>;
-
-  // configs tuple matching Connections
-  using configs_t = std::tuple<conn_config_t<Connections>...>;
-
   template <typename... Configs>
-  void run(net_config_t &config, configs_t configs)
+  void run(net_config_t &config, const std::tuple<Configs...> &configs)
   {
     manet::log::info("initialising net ({})", Net::name);
     Net::init(config);

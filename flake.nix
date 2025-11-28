@@ -10,6 +10,12 @@
       let
         pkgs = import nixpkgs { inherit system; };
 
+        python-with-packages = pkgs.python3.withPackages (py-pkgs: [
+          py-pkgs.jinja2
+          py-pkgs.lxml
+          py-pkgs.websockets
+        ]);
+
         f-stack = import ./nix/f-stack.nix { inherit pkgs; };
 
         manet = pkgs.stdenv.mkDerivation {
@@ -33,6 +39,7 @@
             pkgs.doctest
             pkgs.lcov
             pkgs.openssl
+            python-with-packages
 
             f-stack
           ];
@@ -96,6 +103,7 @@
               f-stack
               jq
               lcov
+              python-with-packages
               self.checks.${system}.pre-commit.enabledPackages
               valgrind
             ];

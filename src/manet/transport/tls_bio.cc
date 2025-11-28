@@ -1,6 +1,6 @@
 #include "manet/transport/tls_bio.hpp"
 
-namespace manet::transport::tls_detail
+namespace manet::transport::tls::detail
 {
 
 int bio_create(BIO *bio)
@@ -52,4 +52,4 @@ long bio_ctrl(BIO *bio, int cmd, long, void *ptr)
   }
 }
 
-} // namespace manet::transport::tls_detail
+} // namespace manet::transport::tls::detail

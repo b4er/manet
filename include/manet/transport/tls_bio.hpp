@@ -5,6 +5,7 @@
 #include <openssl/err.h>
 #include <openssl/ssl.h>
 
+#include "manet/logging.hpp"
 #include "manet/reactor/io.hpp"
 #include "status.hpp"
 
@@ -14,7 +15,7 @@
 #error "OpenSSL >= 1.1.1 required"
 #endif
 
-namespace manet::transport::tls_detail
+namespace manet::transport::tls::detail
 {
 
 inline SSL_CTX *g_tls_ctx = nullptr;
@@ -131,7 +132,7 @@ template <typename Net> inline void g_tls_free()
 }
 
 /** this should not be called twice with different Net (normal) */
-template <typename Net> inline void g_tls_init()
+template <typename Net> inline void g_tls_init() noexcept
 {
   static std::once_flag once;
 
@@ -150,6 +151,7 @@ template <typename Net> inline void g_tls_init()
       }
 
       // trust store:
+      log::trace("SSL_CTX_set_default_verify_paths");
       if (SSL_CTX_set_default_verify_paths(g_tls_ctx) != 1)
       {
         throw std::runtime_error("SSL_CTX_set_default_verify_paths error");
@@ -163,4 +165,4 @@ template <typename Net> inline void g_tls_init()
   );
 }
 
-} // namespace manet::transport::tls_detail
+} // namespace manet::transport::tls::detail

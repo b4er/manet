@@ -9,10 +9,10 @@
 #include "status.hpp"
 #include "tls_bio.hpp"
 
-namespace manet::transport
+namespace manet::transport::tls
 {
 
-namespace tls_detail
+namespace detail
 {
 
 struct TlsEndpoint
@@ -26,22 +26,22 @@ struct TlsEndpoint
   void destroy() noexcept;
 };
 
-} // namespace tls_detail
+} // namespace detail
 
 /** assumed to be used with single Net (such as PosixNet, or FStackNet) */
 struct Tls
 {
   using config_t = const char *;
 
-  template <typename Net> struct Endpoint : tls_detail::TlsEndpoint
+  template <typename Net> struct Endpoint : detail::TlsEndpoint
   {
     using fd_t = typename Net::fd_t;
 
     static std::optional<Endpoint> init(fd_t fd, const config_t &host) noexcept
     {
-      tls_detail::g_tls_init<Net>();
+      detail::g_tls_init<Net>();
 
-      auto ctx = SSL_new(tls_detail::g_tls_ctx);
+      auto ctx = SSL_new(detail::g_tls_ctx);
       if (!ctx)
       {
         if constexpr (log::enabled)
@@ -52,12 +52,11 @@ struct Tls
         return {};
       }
 
-      BIO *bio = socket_BIO<Net>(fd);
+      BIO *bio = detail::socket_BIO<Net>(fd);
       SSL_set_bio(ctx, bio, bio);
       SSL_set_connect_state(ctx);
 
       /* verify host name: */
-
       if (SSL_set_tlsext_host_name(ctx, host) != 1)
       {
         if constexpr (log::enabled)
@@ -83,9 +82,9 @@ struct Tls
         return {};
       }
 
-      return Endpoint{.ssl_ctx = ctx};
+      return Endpoint{ctx};
     }
   };
 };
 
-} // namespace manet::transport
+} // namespace manet::transport::tls

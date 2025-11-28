@@ -9,6 +9,33 @@ add_test(NAME unit-tests COMMAND unit-tests)
 
 set_tests_properties(unit-tests PROPERTIES LABELS unit)
 
+# --- Integration tests
+
+# start server
+add_test(NAME server-start COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/server.py
+                                   --start
+)
+set_tests_properties(server-start PROPERTIES FIXTURES_SETUP server)
+
+set(SSL_CERT_FILE ${CMAKE_CURRENT_SOURCE_DIR}/cert/test-ca.pem)
+
+file(GLOB_RECURSE INTEGRATION_TEST_SOURCES
+     ${CMAKE_CURRENT_SOURCE_DIR}/integration/*.cc
+)
+
+add_executable(integration-tests ${INTEGRATION_TEST_SOURCES})
+target_link_libraries(integration-tests PRIVATE manet::manet doctest::doctest)
+add_test(NAME integration-tests COMMAND integration-tests)
+
+set_tests_properties(
+  integration-tests PROPERTIES LABELS integration TIMEOUT 20 ENVIRONMENT
+                               "SSL_CERT_FILE=${SSL_CERT_FILE}"
+)
+
+# stop server fixture
+add_test(NAME server-stop COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/server.py --stop)
+set_tests_properties(server-stop PROPERTIES FIXTURES_CLEANUP server)
+
 # --- coverage
 if(MANET_ENABLE_COVERAGE)
   message(STATUS "Coverage enabled for unit-tests")
@@ -20,7 +47,8 @@ if(MANET_ENABLE_COVERAGE)
   target_compile_options(unit-tests PRIVATE -O0 -g --coverage)
   target_link_options(unit-tests PRIVATE --coverage)
 
-  #
+  target_compile_options(integration-tests PRIVATE -O0 -g --coverage)
+  target_link_options(integration-tests PRIVATE --coverage)
 
   if(LCOV_PATH AND GENHTML_PATH)
     add_custom_target(

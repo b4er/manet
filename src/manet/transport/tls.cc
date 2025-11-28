@@ -1,7 +1,7 @@
 #include "manet/transport/tls.hpp"
 #include "manet/transport/status.hpp"
 
-namespace manet::transport::tls_detail
+namespace manet::transport::tls::detail
 {
 
 Status TlsEndpoint::handshake_step() noexcept
@@ -25,6 +25,11 @@ Status TlsEndpoint::handshake_step() noexcept
         unsigned long e = ERR_get_error();
         log::error(
           "SSL_connect failed ({}): {}", r, ERR_error_string(e, nullptr)
+        );
+
+        long v = SSL_get_verify_result(ssl_ctx);
+        log::error(
+          "verify_result={} ({})", v, X509_verify_cert_error_string(v)
         );
       }
       return Status::error;
@@ -126,4 +131,4 @@ void TlsEndpoint::destroy() noexcept
   }
 }
 
-} // namespace manet::transport::tls_detail
+} // namespace manet::transport::tls::detail
