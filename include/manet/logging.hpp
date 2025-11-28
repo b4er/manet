@@ -9,10 +9,10 @@
 #include <string_view>
 #include <unistd.h>
 
-namespace manet::utils
+namespace manet::log
 {
 
-inline constexpr bool logging_enabled =
+inline constexpr bool enabled =
 #ifdef DEBUG
   true;
 #else
@@ -27,13 +27,16 @@ enum class LogLevel : std::uint8_t
   error,
 };
 
+namespace detail
+{
+
 inline std::atomic<LogLevel> _g_level{LogLevel::warn};
 
 template <typename... Args>
 inline void log(LogLevel level, std::string_view fmt, Args &&...args) noexcept
 {
   // compile out in non-DEBUG builds
-  if constexpr (!logging_enabled)
+  if constexpr (!enabled)
   {
     (void)level;
     (void)fmt;
@@ -75,12 +78,13 @@ inline void log(LogLevel level, std::string_view fmt, Args &&...args) noexcept
     (void)n;
   }
 }
+} // namespace detail
 
 inline void set_level(LogLevel level) noexcept
 {
-  if constexpr (logging_enabled)
+  if constexpr (enabled)
   {
-    _g_level.store(level, std::memory_order_relaxed);
+    detail::_g_level.store(level, std::memory_order_relaxed);
   }
   else
   {
@@ -92,25 +96,25 @@ inline void set_level(LogLevel level) noexcept
 template <typename... Args>
 inline void trace(std::string_view fmt, Args &&...args) noexcept
 {
-  log(LogLevel::trace, fmt, std::forward<Args>(args)...);
+  detail::log(LogLevel::trace, fmt, std::forward<Args>(args)...);
 }
 
 template <typename... Args>
 inline void info(std::string_view fmt, Args &&...args) noexcept
 {
-  log(LogLevel::info, fmt, std::forward<Args>(args)...);
+  detail::log(LogLevel::info, fmt, std::forward<Args>(args)...);
 }
 
 template <typename... Args>
 inline void warn(std::string_view fmt, Args &&...args) noexcept
 {
-  log(LogLevel::warn, fmt, std::forward<Args>(args)...);
+  detail::log(LogLevel::warn, fmt, std::forward<Args>(args)...);
 }
 
 template <typename... Args>
 inline void error(std::string_view fmt, Args &&...args) noexcept
 {
-  log(LogLevel::error, fmt, std::forward<Args>(args)...);
+  detail::log(LogLevel::error, fmt, std::forward<Args>(args)...);
 }
 
-} // namespace manet::utils
+} // namespace manet::log

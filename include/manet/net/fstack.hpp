@@ -5,7 +5,7 @@
 
 #include "ff_api.h"
 
-#include "manet/utils/logging.hpp"
+#include "manet/logging.hpp"
 
 namespace manet::net
 {
@@ -112,7 +112,7 @@ struct FStack
       case EBADF:
         break;
       default:
-        manet::utils::error(
+        manet::log::error(
           "FStack::subscribe(_, {}, {}, {}) failed", fd, want_read, want_write
         );
         break;

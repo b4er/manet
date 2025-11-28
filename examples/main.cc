@@ -4,8 +4,8 @@
 #include <pthread.h>
 #include <tuple>
 
+#include <manet/logging.hpp>
 #include <manet/reactor.hpp>
-#include <manet/utils/logging.hpp>
 
 #include "config.hpp"
 
@@ -47,12 +47,12 @@ int main(int argc, char *argv[])
   int sig;
   sigwait(&set, &sig);
 
-  manet::utils::trace("net signal halt", sig);
+  manet::log::trace("net signal halt", sig);
   Net::signal();
 
   // wait for graceful shutdown:
   pthread_join(t_net, nullptr);
-  manet::utils::warn("net halted (signal={})", sig);
+  manet::log::warn("net halted (signal={})", sig);
 
   return sig;
 }

@@ -1,7 +1,7 @@
 #pragma once
 
+#include "logging.hpp"
 #include "reactor/connection.hpp"
-#include "utils/logging.hpp"
 
 namespace manet::reactor
 {
@@ -42,7 +42,7 @@ public:
   template <typename... Configs>
   void run(net_config_t &config, configs_t configs)
   {
-    manet::utils::info("initialising net ({})", Net::name);
+    manet::log::info("initialising net ({})", Net::name);
     Net::init(config);
 
     // initialise all connections
@@ -56,7 +56,7 @@ public:
       throw;
     }
 
-    manet::utils::info("entering poll loop");
+    manet::log::info("entering poll loop");
     Net::run(loop, this);
   }
 
@@ -101,7 +101,7 @@ private:
     int nevents = Net::poll(self->events.data(), NUM_EVENTS);
     if (nevents < 0)
     {
-      manet::utils::error("poll failed");
+      manet::log::error("poll failed");
       Net::stop();
     }
 
@@ -168,7 +168,7 @@ private:
 
   void stop_all() noexcept
   {
-    manet::utils::info("stopping all connections");
+    manet::log::info("stopping all connections");
     std::apply(
       [](auto &...opt) { ((opt ? opt->stop() : void()), ...); }, connections
     );

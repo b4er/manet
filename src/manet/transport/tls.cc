@@ -20,10 +20,10 @@ Status TlsEndpoint::handshake_step() noexcept
     }
     else
     {
-      if constexpr (utils::logging_enabled)
+      if constexpr (log::enabled)
       {
         unsigned long e = ERR_get_error();
-        utils::error(
+        log::error(
           "SSL_connect failed ({}): {}", r, ERR_error_string(e, nullptr)
         );
       }

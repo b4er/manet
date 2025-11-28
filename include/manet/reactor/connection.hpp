@@ -8,7 +8,7 @@
 #include "manet/protocol/concepts.hpp"
 #include "manet/transport/concepts.hpp"
 
-#include "manet/utils/logging.hpp"
+#include "manet/logging.hpp"
 
 namespace manet::reactor
 {
@@ -115,7 +115,7 @@ public:
   {
     if (_cookie != nullptr)
     {
-      utils::error("already attached ({} {})", _fd, _cookie);
+      log::error("already attached ({} {})", _fd, _cookie);
       return;
     }
 
@@ -130,9 +130,9 @@ public:
    */
   void handle_event(typename Net::event_t &ev) noexcept override
   {
-    if constexpr (utils::logging_enabled)
+    if constexpr (log::enabled)
     {
-      utils::trace(
+      log::trace(
         "Connection::handle_event({}, {}, {} {} {} {} {})", _fd,
         to_string(_state), Net::ev_signal(ev) ? "S" : "-",
         Net::ev_close(ev) ? "C" : "-", Net::ev_error(ev) ? "E" : "-",
@@ -330,7 +330,7 @@ private:
 
     if (result.fd == -1)
     {
-      utils::error(
+      log::error(
         "dial({}, {}) failed: {}", _host, _port, std::strerror(result.err)
       );
 
@@ -479,7 +479,7 @@ private:
       if (Net::getsockopt(_fd, SOL_SOCKET, SO_ERROR, &err, &elen) == -1)
       {
         int e = errno;
-        utils::error(
+        log::error(
           "getsockopt({}) failed (host={}, errno={} {})", _fd, _host, e,
           std::strerror(e)
         );
@@ -487,7 +487,7 @@ private:
       }
       else if (err != 0)
       {
-        utils::error(
+        log::error(
           "getsockopt({}) failed (host={}, error={} {})", _fd, _host, err,
           std::strerror(err)
         );
@@ -495,7 +495,7 @@ private:
       }
       else
       {
-        utils::info("connected to {}:{} ({})", _host, _port, _fd);
+        log::info("connected to {}:{} ({})", _host, _port, _fd);
         enter_connected();
       }
     }
@@ -750,8 +750,8 @@ private:
     {
       if (_rx.full())
       {
-        utils::trace("rx_buf({}):\n{}", _fd, _rx.hexdump());
-        utils::error("rx buffer overflow ({} {})", _fd, RX_CAP);
+        log::trace("rx_buf({}):\n{}", _fd, _rx.hexdump());
+        log::error("rx buffer overflow ({} {})", _fd, RX_CAP);
         enter_error();
         return;
       }

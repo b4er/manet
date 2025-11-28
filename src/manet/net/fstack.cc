@@ -1,8 +1,8 @@
 #include <stdexcept>
 
+#include "manet/logging.hpp"
 #include "manet/net/concepts.hpp"
 #include "manet/net/fstack.hpp"
-#include "manet/utils/logging.hpp"
 
 #define KILL_IDENT 1
 

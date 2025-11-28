@@ -3,10 +3,10 @@
 #include <cstring>
 #include <vector>
 
+#include "manet/logging.hpp"
 #include "manet/protocol/status.hpp"
 #include "manet/reactor/io.hpp"
 #include "manet/utils/hexdump.hpp"
-#include "manet/utils/logging.hpp"
 
 #include "websocket_frame.hpp"
 
@@ -167,13 +167,13 @@ template <typename Codec> struct WebSocket
         {
           if (MSG_CAP < msg_len + payload.size())
           {
-            utils::error("msg buffer overflow");
+            log::error("msg buffer overflow");
             return Status::error;
           }
 
           if (parsed.frame.payload_len != payload.size())
           {
-            utils::error("unexpected payload size");
+            log::error("unexpected payload size");
             return Status::error;
           }
 
@@ -213,19 +213,19 @@ template <typename Codec> struct WebSocket
       }
       case websocket::parse_status::need_more:
       {
-        utils::trace(
+        log::trace(
           "need more, rxbuf[{}]:\n{}", input.size(), utils::hexdump(input)
         );
         return Status::ok;
       }
       case websocket::parse_status::masked_server:
       {
-        utils::error("server-to-client frame must not be masked");
+        log::error("server-to-client frame must not be masked");
         return Status::error;
       }
       case websocket::parse_status::bad_reserved:
       {
-        utils::error("RSV bits set");
+        log::error("RSV bits set");
         return Status::error;
       }
       }
@@ -242,12 +242,12 @@ template <typename Codec> struct WebSocket
       {
       case websocket::OpCode::cont:
       {
-        utils::warn("WebSocket::CONT nothing to handle");
+        log::warn("WebSocket::CONT nothing to handle");
         return Status::ok;
       }
       case websocket::OpCode::text:
       {
-        utils::trace("WebSocket::TEXT");
+        log::trace("WebSocket::TEXT");
         if constexpr (requires { (void)&Codec::on_text; })
         {
           return codec.on_text(io, payload);
@@ -257,7 +257,7 @@ template <typename Codec> struct WebSocket
       }
       case websocket::OpCode::binary:
       {
-        utils::trace("WebSocket::BINARY");
+        log::trace("WebSocket::BINARY");
         if constexpr (requires { (void)&Codec::on_binary; })
         {
           return codec.on_binary(io, payload);
@@ -269,7 +269,7 @@ template <typename Codec> struct WebSocket
       }
       case websocket::OpCode::close:
       {
-        utils::info("WebSocket::CLOSE");
+        log::info("WebSocket::CLOSE");
 
         auto out = io.wbuf();
         const std::size_t len = payload.size();
@@ -306,12 +306,12 @@ template <typename Codec> struct WebSocket
         if (126 <= len)
         {
           // FIXME: handle longer payloads
-          utils::error("PING payload (>= 126 bits)");
+          log::error("PING payload (>= 126 bits)");
           return Status::close;
         }
         else
         {
-          utils::trace("WebSocket::PING");
+          log::trace("WebSocket::PING");
         }
 
         auto out = io.wbuf();

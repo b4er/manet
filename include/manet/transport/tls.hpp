@@ -4,8 +4,8 @@
 #include <openssl/err.h>
 #include <openssl/ssl.h>
 
+#include "manet/logging.hpp"
 #include "manet/reactor/io.hpp"
-#include "manet/utils/logging.hpp"
 #include "status.hpp"
 #include "tls_bio.hpp"
 
@@ -44,10 +44,10 @@ struct Tls
       auto ctx = SSL_new(tls_detail::g_tls_ctx);
       if (!ctx)
       {
-        if constexpr (utils::logging_enabled)
+        if constexpr (log::enabled)
         {
           ERR_print_errors_fp(stderr);
-          utils::error("cannot create SSL");
+          log::error("cannot create SSL");
         }
         return {};
       }
@@ -60,10 +60,10 @@ struct Tls
 
       if (SSL_set_tlsext_host_name(ctx, host) != 1)
       {
-        if constexpr (utils::logging_enabled)
+        if constexpr (log::enabled)
         {
           unsigned long e = ERR_get_error();
-          utils::error("SNI set failed: {}", ERR_error_string(e, nullptr));
+          log::error("SNI set failed: {}", ERR_error_string(e, nullptr));
         }
 
         SSL_free(ctx);
@@ -74,12 +74,10 @@ struct Tls
 
       if (SSL_set1_host(ctx, host) != 1)
       {
-        if constexpr (utils::logging_enabled)
+        if constexpr (log::enabled)
         {
           unsigned long e = ERR_get_error();
-          utils::error(
-            "SSL_set1_host failed: {}", ERR_error_string(e, nullptr)
-          );
+          log::error("SSL_set1_host failed: {}", ERR_error_string(e, nullptr));
         }
         SSL_free(ctx);
         return {};

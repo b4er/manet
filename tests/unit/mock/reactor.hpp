@@ -93,7 +93,7 @@ private:
     int nevents = TestNet::poll(self->events.data(), NUM_EVENTS);
     if (nevents < 0)
     {
-      manet::utils::error("poll failed");
+      manet::log::error("poll failed");
       TestNet::stop();
     }
 

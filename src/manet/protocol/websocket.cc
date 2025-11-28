@@ -2,9 +2,9 @@
 #include <openssl/sha.h>
 #include <random>
 
+#include "manet/logging.hpp"
 #include "manet/protocol/websocket.hpp"
 #include "manet/utils/base64.hpp"
-#include "manet/utils/logging.hpp"
 
 namespace manet::protocol::websocket_detail
 {
@@ -155,23 +155,23 @@ read_handshake(std::array<char, 28> ws_accept_key, reactor::IO io) noexcept
   }
 
   // dump response
-  if constexpr (utils::logging_enabled)
+  if constexpr (log::enabled)
   {
     std::string_view sv(reinterpret_cast<const char *>(input.data()), i + 1);
-    utils::trace("WebSocket handshake:\n{}", sv);
+    log::trace("WebSocket handshake:\n{}", sv);
   }
 
   // validate the HTTP response
 
   if (crlf_counter != 4)
   {
-    utils::error("invalid HTTP response: unexpected end.");
+    log::error("invalid HTTP response: unexpected end.");
     return Status::error;
   }
 
   if (sp_ix == 0 || input.size() <= sp_ix + 3)
   {
-    utils::error("invalid HTTP response: status line.");
+    log::error("invalid HTTP response: status line.");
     return Status::error;
   }
 
@@ -179,7 +179,7 @@ read_handshake(std::array<char, 28> ws_accept_key, reactor::IO io) noexcept
   if (input[sp_ix + 1] != std::byte{'1'} ||
       input[sp_ix + 2] != std::byte{'0'} || input[sp_ix + 3] != std::byte{'1'})
   {
-    utils::error(
+    log::error(
       "HTTP error: {}{}{}", static_cast<char>(input[sp_ix + 1]),
       static_cast<char>(input[sp_ix + 2]), static_cast<char>(input[sp_ix + 3])
     );
@@ -199,7 +199,7 @@ read_handshake(std::array<char, 28> ws_accept_key, reactor::IO io) noexcept
 
     if (got_sv != expect_sv)
     {
-      utils::error(
+      log::error(
         "WebSocket error: Sec-WebSocket-Accept (expected: {}, got: {})",
         expect_sv, got_sv
       );

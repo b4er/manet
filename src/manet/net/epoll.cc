@@ -4,9 +4,9 @@
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 
+#include "manet/logging.hpp"
 #include "manet/net/concepts.hpp"
 #include "manet/net/epoll.hpp"
-#include "manet/utils/logging.hpp"
 
 namespace manet::net
 {

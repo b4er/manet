@@ -1,13 +1,13 @@
 #include <getopt.h>
 #include <iostream>
-#include <manet/utils/logging.hpp>
+#include <manet/logging.hpp>
 
 #include "config.hpp"
 
 #ifdef USE_FSTACK
-const char *short_opts = manet::utils::logging_enabled ? "+hc:v" : "+hc:";
+const char *short_opts = manet::log::enabled ? "+hc:v" : "+hc:";
 #else
-const char *short_opts = manet::utils::logging_enabled ? "+hv" : "+h";
+const char *short_opts = manet::log::enabled ? "+hv" : "+h";
 #endif
 
 struct option long_opts[] = {
@@ -29,7 +29,7 @@ void helpful_exit(char *pname, int status)
 #ifdef USE_FSTACK
   fprintf(fout, "  -c <conf>             F-Stack config file\n");
 #endif
-  if (manet::utils::logging_enabled)
+  if (manet::log::enabled)
   {
     fprintf(fout, "  -v|-vv              set verbose\n");
   }
@@ -68,9 +68,8 @@ Net::config_t read_args(int argc, char *argv[])
 
   if (v_count)
   {
-    manet::utils::set_level(
-      v_count == 1 ? manet::utils::LogLevel::info
-                   : manet::utils::LogLevel::trace
+    manet::log::set_level(
+      v_count == 1 ? manet::log::LogLevel::info : manet::log::LogLevel::trace
     );
   }
 
