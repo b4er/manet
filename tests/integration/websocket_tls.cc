@@ -32,11 +32,8 @@ struct HelloCodec : WsTest
 
 TEST_CASE("websocket client receives [TEXT \"Hello, World!\"]")
 {
-  log::set_level(log::LogLevel::trace);
-  log::trace("SSL_CERT_FILE : {}", getenv("SSL_CERT_FILE"));
   ConnectionsTest<Net, WsConn<transport::tls::Tls, HelloCodec>> test("/hello");
   CHECK(test.output<0>() == Trace{"Hello, World!"});
-  log::set_level(log::LogLevel::warn);
 }
 
 struct BinaryCodec : WsTest

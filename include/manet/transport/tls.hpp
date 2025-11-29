@@ -37,7 +37,7 @@ struct Tls
   {
     using fd_t = typename Net::fd_t;
 
-    static std::optional<Endpoint> init(fd_t fd, const config_t &host) noexcept
+    static std::optional<Endpoint> init(fd_t fd, config_t host) noexcept
     {
       detail::g_tls_init<Net>();
 

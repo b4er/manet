@@ -234,29 +234,47 @@ Status read_handshake(
   return Status::ok;
 }
 
-std::size_t write_close(CloseCode code, std::span<std::byte> output) noexcept
+/** write a control frame (CLOSE,PING,PONG; payload length <= 125 bytes) */
+std::size_t write_control_frame(
+  std::span<std::byte> output, OpCode opcode, std::span<const std::byte> payload
+) noexcept
 {
-  if (output.size() < 8)
+  if (output.size() < 6 + payload.size() || 125 < payload.size())
     return 0;
 
   auto out = output.data();
 
-  // FIN=1, RSV=0, OPCODE=0x8 (Close)
-  out[0] = std::byte{0x88};
+  // FIN=1, RSV=0, OPCODE
+  out[0] = std::byte{0x80} | static_cast<std::byte>(opcode);
+
   // payload length
-  out[1] = std::byte{0x80 | 2};
+  out[1] = std::byte{0x80} | static_cast<std::byte>(payload.size());
 
   // MASK
-  random_bytes(out + 2, 4);
+  constexpr int mask_offset = 2;
+  constexpr int mask_len = 4;
+
+  random_bytes(out + mask_offset, mask_len);
 
   // payload
+  constexpr int payload_offset = 6;
+
+  for (std::size_t i = 0; i < payload.size(); i++)
+  {
+    out[payload_offset + i] =
+      out[mask_offset + (i & (mask_len - 1))] ^ payload[i];
+  }
+
+  return 6 + payload.size();
+}
+
+std::size_t write_close(std::span<std::byte> output, CloseCode code) noexcept
+{
+  // construct payload
   uint16_t net_code = htons(static_cast<uint16_t>(code));
-  auto payload = reinterpret_cast<std::byte *>(&net_code);
+  auto payload = std::span{reinterpret_cast<std::byte *>(&net_code), 2};
 
-  out[6] = out[2] ^ payload[0];
-  out[7] = out[3] ^ payload[1];
-
-  return 8;
+  return write_control_frame(output, OpCode::close, payload);
 }
 
 } // namespace manet::protocol::websocket::detail

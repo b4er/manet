@@ -151,7 +151,6 @@ template <typename Net> inline void g_tls_init() noexcept
       }
 
       // trust store:
-      log::trace("SSL_CTX_set_default_verify_paths");
       if (SSL_CTX_set_default_verify_paths(g_tls_ctx) != 1)
       {
         throw std::runtime_error("SSL_CTX_set_default_verify_paths error");

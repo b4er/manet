@@ -17,6 +17,7 @@
         ]);
 
         f-stack = import ./nix/f-stack.nix { inherit pkgs; };
+        sbepp = import ./nix/sbepp.nix { inherit pkgs; };
 
         manet = pkgs.stdenv.mkDerivation {
           pname = "manet";
@@ -42,6 +43,7 @@
             python-with-packages
 
             f-stack
+            sbepp
           ];
         };
       in
@@ -104,6 +106,7 @@
               jq
               lcov
               python-with-packages
+              sbepp
               self.checks.${system}.pre-commit.enabledPackages
               valgrind
             ];

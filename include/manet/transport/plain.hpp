@@ -22,7 +22,7 @@ struct Plain
     std::size_t (*net_read)(fd_t, void *, std::size_t) noexcept;
     std::size_t (*net_write)(fd_t, const void *, std::size_t) noexcept;
 
-    static std::optional<Endpoint> init(fd_t fd, const config_t &) noexcept
+    static std::optional<Endpoint> init(fd_t fd, config_t) noexcept
     {
       return Endpoint{
         .fd = fd,

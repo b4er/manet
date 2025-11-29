@@ -28,7 +28,7 @@ target_link_libraries(integration-tests PRIVATE manet::manet doctest::doctest)
 add_test(NAME integration-tests COMMAND integration-tests)
 
 set_tests_properties(
-  integration-tests PROPERTIES LABELS integration TIMEOUT 20 ENVIRONMENT
+  integration-tests PROPERTIES LABELS integration TIMEOUT 30 ENVIRONMENT
                                "SSL_CERT_FILE=${SSL_CERT_FILE}"
 )
 

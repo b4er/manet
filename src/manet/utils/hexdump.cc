@@ -13,7 +13,7 @@ std::string readable_ascii(std::string_view input_str)
   {
     auto c = input_str[i];
 
-    if (c < ' ' || '~' < c)
+    if (!std::isprint(c))
     {
       static const char *hex = "0123456789abcdef";
       str.append("%");
@@ -65,7 +65,7 @@ std::string hexdump(std::span<const std::byte> s, std::size_t base)
     for (std::size_t j = 0; j < n; ++j)
     {
       unsigned c = u8(s[i + j]);
-      out += (31 < c && c < 127) ? static_cast<char>(c) : '.';
+      out += std::isprint(c) ? static_cast<char>(c) : '.';
     }
     out += "|\n";
   }

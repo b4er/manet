@@ -20,7 +20,7 @@ template <typename Transport, typename Protocol> struct ConnectionConfig
  * `.run()` starts an infinite event loop polling the network for new edge
  * events and handles them. Gracefully closed connections are restarted.
  *
- * Heartbeat every ~12.7 seconds.
+ * Heartbeat every ~6.3 seconds.
  *
  * `Net::stop()` will terminate the event loop.
  *
@@ -134,8 +134,8 @@ private:
       }
     }
 
-    // ~every 12.7 seconds (aligned with timeouts)
-    if ((++counter & 127) == 0)
+    // ~every 6.3 seconds (aligned with timeouts)
+    if ((++counter & 63) == 0)
     {
       self->heartbeat();
     }

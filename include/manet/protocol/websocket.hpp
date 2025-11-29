@@ -40,7 +40,10 @@ Status read_handshake(
   std::array<char, 28> ws_accept_key, reactor::RxSource in
 ) noexcept;
 
-std::size_t write_close(CloseCode code, std::span<std::byte> output) noexcept;
+std::size_t write_control_frame(
+  std::span<std::byte> output, OpCode opcode, std::span<const std::byte> payload
+) noexcept;
+std::size_t write_close(std::span<std::byte> output, CloseCode code) noexcept;
 
 void random_bytes(std::byte *buf, std::size_t len) noexcept;
 
@@ -154,10 +157,18 @@ struct WebSocket
         close_code = detail::CloseCode::normal;
       }
 
-      auto sent = detail::write_close(close_code, io.wbuf());
+      auto sent = detail::write_close(io.wbuf(), close_code);
       io.wrote(sent);
 
       return 0 < sent ? Status::close : Status::error;
+    }
+
+    void heartbeat(reactor::TxSink out) noexcept
+    {
+      std::span<const std::byte> payload{};
+      out.wrote(
+        detail::write_control_frame(out.wbuf(), detail::OpCode::ping, payload)
+      );
     }
 
   private:
@@ -341,22 +352,9 @@ struct WebSocket
           return Status::close;
         }
 
-        // FIN | opcode
-        out.data()[0] =
-          std::byte{0x80} | static_cast<std::byte>(detail::OpCode::pong);
-        // MASK=1 | payload len
-        out.data()[1] = std::byte{0x80} | static_cast<std::byte>(len);
-
-        // mask
-        detail::random_bytes(out.data() + 2, 4);
-
-        // masked payload
-        for (std::size_t i = 0; i < payload.size(); i++)
-        {
-          out.data()[6 + i] = payload.data()[i] ^ out.data()[2 + (i & 3)];
-        }
-
-        io.wrote(6 + len);
+        io.wrote(
+          detail::write_control_frame(out, detail::OpCode::pong, payload)
+        );
 
         return Status::ok;
       }

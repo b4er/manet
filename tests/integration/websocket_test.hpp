@@ -114,6 +114,8 @@ private:
   std::tuple<repeat_t<sem_t, WsConnections>...> _dones;
   std::tuple<repeat_t<std::vector<std::string>, WsConnections>...> _outputs;
 
+  std::string host = "localhost";
+
   static void *reactor_worker(void *data)
   {
     std::monostate net_config{};
@@ -154,8 +156,6 @@ private:
       .extra = {},
       .codec_config = {.done = &done, .output = &output}
     };
-
-    std::string host = "localhost";
 
     if constexpr (std::is_same_v<Transport, transport::tls::Tls>)
     {

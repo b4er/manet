@@ -31,7 +31,7 @@ template <typename Net, typename T>
 concept Transport =
   requires(
     typename T::template Endpoint<Net> &ctx, typename Net::fd_t fd,
-    const typename T::config_t &config, manet::reactor::RxSink in,
+    typename T::config_t config, manet::reactor::RxSink in,
     manet::reactor::TxSource out
   ) {
     {
