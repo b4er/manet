@@ -132,7 +132,7 @@ template <typename Net> inline void g_tls_free()
 }
 
 /** this should not be called twice with different Net (normal) */
-template <typename Net> inline void g_tls_init() noexcept
+template <typename Net> inline void g_tls_init()
 {
   static std::once_flag once;
 

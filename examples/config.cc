@@ -1,6 +1,7 @@
 #include <getopt.h>
 #include <iostream>
 #include <manet/logging.hpp>
+#include <openssl/pem.h>
 
 #include "config.hpp"
 
@@ -80,6 +81,21 @@ Net::config_t read_args(int argc, char *argv[])
 #endif
 }
 
+EVP_PKEY *load_ed25519_key(const char *path) noexcept
+{
+  FILE *file = fopen(path, "r");
+  if (!file)
+  {
+    manet::log::error("invalid PEM file: {}", path);
+    return nullptr;
+  }
+
+  EVP_PKEY *private_key = PEM_read_PrivateKey(file, nullptr, nullptr, nullptr);
+  fclose(file);
+
+  return private_key;
+}
+
 Config get_config(int argc, char *argv[])
 {
   auto net_config = read_args(argc, argv);
@@ -94,15 +110,13 @@ Config get_config(int argc, char *argv[])
     exit(1);
   }
 
-  /*
   // load the corresponding private key from file
   auto private_key = PrivateKey(load_ed25519_key(".binance-ed25519"));
   if (!private_key)
   {
-    std::cerr << "could not load private key" << std::endl;
+    std::cerr << "could not load private key\n";
     exit(1);
   }
-  */
 
-  return Config{net_config, std::move(api_key)}; //, std::move(private_key)};
+  return Config{net_config, std::move(api_key), std::move(private_key)};
 }
