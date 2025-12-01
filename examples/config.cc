@@ -16,6 +16,8 @@ struct option long_opts[] = {
 #ifdef USE_FSTACK
   {"config", required_argument, nullptr, 'c'}, // forward to F-Stack
 #endif
+  {"net-cpu", required_argument, nullptr, 'n'},
+  {"worker-cpu", required_argument, nullptr, 'w'},
   {0, 0, 0, 0}
 };
 
@@ -30,6 +32,8 @@ void helpful_exit(char *pname, int status)
 #ifdef USE_FSTACK
   fprintf(fout, "  -c <conf>             F-Stack config file\n");
 #endif
+  fprintf(fout, "  --net-cpu <id>        pin network thread to CPU <id>\n");
+  fprintf(fout, "  --worker-cpu <id>     pin worker thread to CPU <id>\n");
   if (manet::log::enabled)
   {
     fprintf(fout, "  -v|-vv              set verbose\n");
@@ -38,25 +42,41 @@ void helpful_exit(char *pname, int status)
   exit(status);
 }
 
-Net::config_t read_args(int argc, char *argv[])
+struct Args
 {
-  int c;
-#ifdef USE_FSTACK
-  char *config_file = nullptr;
-#endif
+  Net::config_t net_config;
+  std::optional<int> net_cpu;
+  std::optional<int> worker_cpu;
+};
 
+Args read_args(int argc, char *argv[])
+{
+  Args args;
+#ifdef USE_FSTACK
+  args.net_config = nullptr;
+#endif
+  args.net_cpu = {};
+  args.worker_cpu = {};
+
+  int c;
   int v_count = 0;
 
   while ((c = getopt_long(argc, argv, short_opts, long_opts, nullptr)) != -1)
   {
     switch (c)
     {
+    case 'w':
+      args.worker_cpu = std::stoi(optarg);
+      break;
+    case 'n':
+      args.net_cpu = std::stoi(optarg);
+      break;
     case 'h':
       helpful_exit(argv[0], 0);
       break;
 #ifdef USE_FSTACK
     case 'c':
-      config_file = optarg;
+      args.net_config = optarg;
       break;
 #endif
     case 'v':
@@ -74,11 +94,7 @@ Net::config_t read_args(int argc, char *argv[])
     );
   }
 
-#ifdef USE_FSTACK
-  return config_file;
-#else
-  return {};
-#endif
+  return args;
 }
 
 EVP_PKEY *load_ed25519_key(const char *path) noexcept
@@ -98,7 +114,7 @@ EVP_PKEY *load_ed25519_key(const char *path) noexcept
 
 Config get_config(int argc, char *argv[])
 {
-  auto net_config = read_args(argc, argv);
+  auto args = read_args(argc, argv);
 
   // read Binance API key from environment
   const char *api_cstr = std::getenv("MBX_APIKEY");
@@ -110,13 +126,19 @@ Config get_config(int argc, char *argv[])
     exit(1);
   }
 
-  // load the corresponding private key from file
+  /* load the corresponding private key from file
   auto private_key = PrivateKey(load_ed25519_key(".binance-ed25519"));
   if (!private_key)
   {
     std::cerr << "could not load private key\n";
     exit(1);
-  }
+  }*/
 
-  return Config{net_config, std::move(api_key), std::move(private_key)};
+  return Config{
+    .net_config = args.net_config,
+    .api_key = std::move(api_key),
+    // std::move(private_key),
+    .net_cpu_id = args.net_cpu,
+    .worker_cpu_id = args.worker_cpu
+  };
 }

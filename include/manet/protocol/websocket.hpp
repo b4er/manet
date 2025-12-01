@@ -86,9 +86,7 @@ struct WebSocket
 
     Codec codec;
 
-    Session(
-      std::string_view host, uint16_t /*port*/, const config_t &config
-    ) noexcept
+    Session(std::string_view host, uint16_t /*port*/, config_t &config) noexcept
         : host(host),
           path(config.path),
           extra(config.extra),

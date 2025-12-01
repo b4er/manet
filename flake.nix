@@ -18,6 +18,7 @@
 
         f-stack = import ./nix/f-stack.nix { inherit pkgs; };
         sbepp = import ./nix/sbepp.nix { inherit pkgs; };
+        spsc-queue = import ./nix/spsc-queue.nix { inherit pkgs; };
 
         manet = pkgs.stdenv.mkDerivation {
           pname = "manet";
@@ -44,6 +45,7 @@
 
             f-stack
             sbepp
+            spsc-queue
           ];
         };
       in
@@ -103,10 +105,12 @@
           default = pkgs.mkShell {
             buildInputs = with pkgs; [
               f-stack
+              sbepp
+              spsc-queue
+
               jq
               lcov
               python-with-packages
-              sbepp
               self.checks.${system}.pre-commit.enabledPackages
               valgrind
             ];

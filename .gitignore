@@ -1,4 +1,5 @@
 # user files
+/app
 .binance-ed25519
 .env
 

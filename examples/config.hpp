@@ -26,7 +26,10 @@ struct Config
 {
   Net::config_t net_config;
   std::string api_key;
-  PrivateKey private_key;
+  // PrivateKey private_key;
+
+  std::optional<int> net_cpu_id;
+  std::optional<int> worker_cpu_id;
 };
 
 Config get_config(int argc, char *argv[]);

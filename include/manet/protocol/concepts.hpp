@@ -45,7 +45,7 @@ concept Teardown = requires(P::Session &ctx) {
 template <typename P>
 concept Protocol =
   requires(
-    std::string_view host, uint16_t port, const typename P::config_t &config,
+    std::string_view host, uint16_t port, typename P::config_t &config,
     typename P::Session &ctx, reactor::IO io
   ) {
     { typename P::Session{host, port, config} } noexcept;

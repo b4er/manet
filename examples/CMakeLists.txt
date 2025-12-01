@@ -1,6 +1,5 @@
-# SBE codegen (configure phase):
-
-find_package(sbepp REQUIRED)
+# SBE codegen: rather than `sbeppc_make_schema_target`, or `add_custom_command`
+# we rely on `execute_process`. this way we get the headers at configure phase.
 find_program(SBEPPC sbeppc REQUIRED)
 
 set(SCHEMA_OUT_DIR "${CMAKE_CURRENT_BINARY_DIR}/schema/include")
@@ -34,7 +33,14 @@ add_library(binance_sbe INTERFACE)
 target_sources(binance_sbe INTERFACE ${BINANCE_SBE_HEADERS})
 target_include_directories(binance_sbe INTERFACE "${SCHEMA_OUT_DIR}")
 
-# example
+# add example
+
+find_package(sbepp REQUIRED)
+find_package(SPSCQueue REQUIRED)
 
 add_executable(binance-sbe ${BINANCE_SBE_HEADERS} config.cc main.cc)
-target_link_libraries(binance-sbe PRIVATE manet::manet sbepp::sbepp binance_sbe)
+
+target_link_libraries(
+  binance-sbe PRIVATE manet::manet SPSCQueue::SPSCQueue sbepp::sbepp
+                      binance_sbe
+)
