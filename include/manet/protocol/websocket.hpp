@@ -369,4 +369,7 @@ struct WebSocket
 
 } // namespace websocket
 
+template <typename Codec>
+using WebSocket = protocol::websocket::WebSocket<Codec>;
+
 } // namespace manet::protocol

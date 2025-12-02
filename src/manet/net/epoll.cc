@@ -41,12 +41,12 @@ int Epoll::getsockopt(
   return ::getsockopt(fd, level, opt_name, opt_val, opt_len);
 }
 
-std::size_t Epoll::read(fd_t fd, void *buf, std::size_t len) noexcept
+ssize_t Epoll::read(fd_t fd, void *buf, std::size_t len) noexcept
 {
   return ::read(fd, buf, len);
 }
 
-std::size_t Epoll::write(fd_t fd, const void *buf, std::size_t len) noexcept
+ssize_t Epoll::write(fd_t fd, const void *buf, std::size_t len) noexcept
 {
   return ::write(fd, buf, len);
 }

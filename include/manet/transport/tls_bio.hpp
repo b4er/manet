@@ -36,8 +36,7 @@ template <typename Net> static int bio_read(BIO *bio, char *out, int outl)
 
   while (true)
   {
-    int n = Net::read(data->fd, out, outl);
-
+    ssize_t n = Net::read(data->fd, out, outl);
     if (n >= 0)
     {
       return n;
@@ -70,7 +69,7 @@ template <typename Net> static int bio_write(BIO *bio, const char *in, int inl)
 
   while (true)
   {
-    int n = Net::write(data->fd, in, inl);
+    ssize_t n = Net::write(data->fd, in, inl);
     if (n >= 0)
     {
       return n;

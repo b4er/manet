@@ -5,7 +5,7 @@
 
 #include "config.hpp"
 
-#ifdef USE_FSTACK
+#ifdef MANET_USE_FSTACK
 const char *short_opts = manet::log::enabled ? "+hc:v" : "+hc:";
 #else
 const char *short_opts = manet::log::enabled ? "+hv" : "+h";
@@ -13,7 +13,7 @@ const char *short_opts = manet::log::enabled ? "+hv" : "+h";
 
 struct option long_opts[] = {
   {"help", no_argument, nullptr, 'h'},
-#ifdef USE_FSTACK
+#ifdef MANET_USE_FSTACK
   {"config", required_argument, nullptr, 'c'}, // forward to F-Stack
 #endif
   {"net-cpu", required_argument, nullptr, 'n'},
@@ -29,7 +29,7 @@ void helpful_exit(char *pname, int status)
   fprintf(fout, "net: %s\n\n", Net::name);
   fprintf(fout, "options:\n");
   fprintf(fout, "  -h, --help            show help\n");
-#ifdef USE_FSTACK
+#ifdef MANET_USE_FSTACK
   fprintf(fout, "  -c <conf>             F-Stack config file\n");
 #endif
   fprintf(fout, "  --net-cpu <id>        pin network thread to CPU <id>\n");
@@ -52,8 +52,8 @@ struct Args
 Args read_args(int argc, char *argv[])
 {
   Args args;
-#ifdef USE_FSTACK
-  args.net_config = nullptr;
+#ifdef MANET_USE_FSTACK
+  args.net_config = {};
 #endif
   args.net_cpu = {};
   args.worker_cpu = {};
@@ -74,7 +74,7 @@ Args read_args(int argc, char *argv[])
     case 'h':
       helpful_exit(argv[0], 0);
       break;
-#ifdef USE_FSTACK
+#ifdef MANET_USE_FSTACK
     case 'c':
       args.net_config = optarg;
       break;

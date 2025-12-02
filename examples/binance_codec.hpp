@@ -1,11 +1,16 @@
+/**
+ * Provides a quick example WebSocket codec implementation "BinanceDepth". The
+ * connection will listen for DepthDiffStreamEvent and push the to the provided
+ * queue (or drop them if the queue is full).
+ *
+ * The connection is expected to drop after 24h (refer to public API docs)!
+ */
+
 #pragma once
 
 #include <binance_sbe/binance_sbe.hpp>
-
-#include <manet/logging.hpp>
-#include <manet/protocol/status.hpp>
-#include <manet/reactor/io.hpp>
-
+#include <manet/protocol/websocket.hpp>
+#include <manet/utils/hexdump.hpp>
 #include <rigtorp/SPSCQueue.h>
 
 enum class Side : uint8_t
@@ -28,7 +33,6 @@ struct DepthEvent
   Symbol symbol;
   Side side;
   int64_t event_time_ns; // remote time
-  int64_t recv_time_ns;  // local time
   int64_t update_id;
 
   int64_t price_exp;
@@ -105,6 +109,7 @@ struct BinanceDepth
     }
     else
     {
+      log::error("invalid header:\n{}", manet::utils::hexdump(payload));
       return Status::error;
     }
   }
@@ -115,16 +120,13 @@ private:
     binance_sbe::messages::DepthDiffStreamEvent<const std::byte> diff
   ) noexcept
   {
-    const auto recv_time_ns = 0;
-
-    for (auto ask : diff.asks())
+    for (auto &&ask : diff.asks())
     {
       if (!_queue->try_push(
             DepthEvent{
               .symbol = Symbol::BTC,
               .side = Side::ask,
               .event_time_ns = diff.eventTime().value(),
-              .recv_time_ns = recv_time_ns,
               .update_id = diff.lastBookUpdateId().value(),
 
               .price_exp = diff.priceExponent().value(),
@@ -140,14 +142,13 @@ private:
       }
     }
 
-    for (auto bid : diff.bids())
+    for (auto &&bid : diff.bids())
     {
       if (!_queue->try_push(
             DepthEvent{
               .symbol = Symbol::BTC,
               .side = Side::bid,
               .event_time_ns = diff.eventTime().value(),
-              .recv_time_ns = recv_time_ns,
               .update_id = diff.lastBookUpdateId().value(),
 
               .price_exp = diff.priceExponent().value(),

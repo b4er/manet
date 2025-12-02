@@ -3,7 +3,7 @@
 #include <memory>
 #include <openssl/evp.h>
 
-#ifdef USE_FSTACK
+#ifdef MANET_USE_FSTACK
 #include "manet/net/fstack.hpp"
 using Net = manet::net::FStack;
 #else

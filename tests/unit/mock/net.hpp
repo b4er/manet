@@ -176,7 +176,7 @@ struct TestNet
 
   static void apply() noexcept {}
 
-  static std::size_t read(fd_t fd, void *ptr, std::size_t len) noexcept
+  static ssize_t read(fd_t fd, void *ptr, std::size_t len) noexcept
   {
     if (!_sockets.contains(fd))
     {
@@ -203,7 +203,7 @@ struct TestNet
     return consumed;
   }
 
-  static std::size_t write(fd_t fd, const void *ptr, std::size_t len) noexcept
+  static ssize_t write(fd_t fd, const void *ptr, std::size_t len) noexcept
   {
     if (!_sockets.contains(fd) || !_outputs.contains(fd))
     {

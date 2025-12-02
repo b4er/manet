@@ -37,12 +37,12 @@ int FStack::getsockopt(
   return ff_getsockopt(fd, level, opt_name, opt_val, opt_len);
 }
 
-std::size_t FStack::read(fd_t fd, void *buf, std::size_t len) noexcept
+ssize_t FStack::read(fd_t fd, void *buf, std::size_t len) noexcept
 {
   return ff_read(fd, buf, len);
 }
 
-std::size_t FStack::write(fd_t fd, const void *buf, std::size_t len) noexcept
+ssize_t FStack::write(fd_t fd, const void *buf, std::size_t len) noexcept
 {
   return ff_write(fd, buf, len);
 }

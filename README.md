@@ -4,9 +4,8 @@
 
 manet is a network I/O library providing a single-threaded, edge-triggered
 reactor for client-side connection handling. It targets [F-Stack][F-Stack] as a
-backend for low-latency, kernel-bypassed networking.
-
-(it also provides a Linux `epoll` backend for testing)
+backend for low-latency, kernel-bypassed networking, and also provides a Linux
+`epoll` backend (useful for development and testing).
 
 
 ## Quickstart
@@ -22,7 +21,7 @@ using Net = net::Epoll;
 using Transport = transport::Tls;
 // or: using Transport = transport::Plain;
 
-using Connection = reactor::Connection<Net, Transport, Protocol>;
+using Connection_1 = Connection<Net, Transport, Protocol>;
 ```
 
 A protocol defines asynchronous handlers for connecting, handling data and/or
@@ -58,14 +57,15 @@ initialize the event listeners and start all connections:
 ```cpp
 // std::optional<std::string> fstack_config_file = "config.ini";
 
-reactor::Reactor<Net, Connection_1, Connection_2, ...> reactor;
+Reactor<Net, Connection_1, Connection_2, ...> reactor;
 
 reactor.run(fstack_config_file, std::make_tuple(
   connection_config_1, connection_config_2, ...
 ));
 ```
 
-To interrupt the reactor and shut it down call `Net::signal()`. For more information please refer to the [examples](./examples/main.cc).
+To interrupt the reactor and shut it down call `Net::signal()`. For more
+information please refer to the [examples](./examples/main.cc).
 
 
 ## Development

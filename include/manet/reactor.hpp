@@ -3,7 +3,10 @@
 #include "logging.hpp"
 #include "reactor/connection.hpp"
 
-namespace manet::reactor
+namespace manet
+{
+
+namespace reactor
 {
 
 template <typename Transport, typename Protocol> struct ConnectionConfig
@@ -168,4 +171,15 @@ private:
   }
 };
 
-} // namespace manet::reactor
+} // namespace reactor
+
+template <typename Net, typename Transport, typename Protocol>
+using Connection = reactor::Connection<Net, Transport, Protocol>;
+
+template <typename Net, typename... Connections>
+using Reactor = reactor::Reactor<Net, Connections...>;
+
+template <typename Transport, typename Protocol>
+using ConnectionConfig = reactor::ConnectionConfig<Transport, Protocol>;
+
+} // namespace manet

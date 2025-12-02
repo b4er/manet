@@ -27,8 +27,8 @@ struct Epoll
     fd_t fd, int level, int opt_name, void *opt_val, socklen_t *opt_len
   ) noexcept;
 
-  static std::size_t read(fd_t fd, void *ptr, std::size_t len) noexcept;
-  static std::size_t write(fd_t fd, const void *ptr, std::size_t len) noexcept;
+  static ssize_t read(fd_t fd, void *ptr, std::size_t len) noexcept;
+  static ssize_t write(fd_t fd, const void *ptr, std::size_t len) noexcept;
 
   // reactor lifecycle
   static void init(config_t);

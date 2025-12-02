@@ -9,7 +9,10 @@
 #include "status.hpp"
 #include "tls_bio.hpp"
 
-namespace manet::transport::tls
+namespace manet::transport
+{
+
+namespace tls
 {
 
 namespace detail
@@ -87,4 +90,8 @@ struct Tls
   };
 };
 
-} // namespace manet::transport::tls
+} // namespace tls
+
+using Tls = tls::Tls;
+
+} // namespace manet::transport

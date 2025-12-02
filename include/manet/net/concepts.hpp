@@ -55,8 +55,8 @@ concept Net = requires(
   { Backend::subscribe(ptr, fd, false, true) } noexcept;
   { Backend::subscribe(ptr, fd, true, true) } noexcept;
 
-  { Backend::read(fd, ptr, len) } noexcept -> std::same_as<std::size_t>;
-  { Backend::write(fd, cptr, len) } noexcept -> std::same_as<std::size_t>;
+  { Backend::read(fd, ptr, len) } noexcept -> std::same_as<ssize_t>;
+  { Backend::write(fd, cptr, len) } noexcept -> std::same_as<ssize_t>;
 
   { Backend::clear(fd) } noexcept;
 };
