@@ -33,8 +33,8 @@
       "binaryDir": "build/release",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
-        "MANET_BUILD_TESTING": "OFF",
-        "MANET_BUILD_EXAMPLES": "OFF",
+        "MANET_BUILD_TESTING": "ON",
+        "MANET_BUILD_EXAMPLES": "ON",
         "MANET_ENABLE_COVERAGE": "OFF",
         "MANET_USE_FSTACK": "OFF"
       }

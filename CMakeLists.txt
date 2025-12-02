@@ -27,12 +27,12 @@ add_compile_options(-Wall -Wextra -Wpedantic -Warray-bounds)
 # --- dependencies
 find_package(OpenSSL REQUIRED)
 
-if(USE_FSTACK)
+if(MANET_USE_FSTACK)
   find_package(PkgConfig REQUIRED)
   pkg_check_modules(FSTACK REQUIRED libdpdk)
   pkg_check_modules(DPDK REQUIRED fstack)
 
-  add_compile_definitions(USE_FSTACK)
+  add_compile_definitions(MANET_USE_FSTACK)
 endif()
 
 # lib headers and sources:
@@ -40,9 +40,7 @@ set(MANET_PUBLIC_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
 file(GLOB_RECURSE MANET_SRC_FILES ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cc)
 
-if(MANET_USE_FSTACK)
-  list(REMOVE_ITEM MANET_SRC_FILES ${CMAKE_SOURCE_DIR}/src/manet/net/epoll.cc)
-else()
+if(NOT (MANET_USE_FSTACK))
   list(REMOVE_ITEM MANET_SRC_FILES ${CMAKE_SOURCE_DIR}/src/manet/net/fstack.cc)
 endif()
 

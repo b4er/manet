@@ -1,10 +1,14 @@
 #pragma once
 
+#include <algorithm>
 #include <cassert>
+#include <cstddef>
+#include <cstdint>
 #include <cstring>
 #include <deque>
 #include <errno.h>
 #include <iostream>
+#include <span>
 #include <string>
 #include <string_view>
 #include <sys/socket.h>
@@ -15,11 +19,13 @@
 
 struct FdAction
 {
-  enum class kind_t : uint8_t
+  enum kind_t : uint8_t
   {
     read_quota,
     write_quota
-  } kind;
+  };
+
+  kind_t kind;
   std::size_t quota = 0;
 
   static FdAction GrantRead(std::size_t len)
@@ -36,11 +42,13 @@ struct FdAction
 struct FdScript
 {
   std::deque<FdAction> actions;
-  enum class sentinel_t : uint8_t
+  enum sentinel_t : uint8_t
   {
     CONNRESET,
     HUP,
-  } sentinel;
+  };
+
+  sentinel_t sentinel;
 
   std::span<const std::byte> input;
 
@@ -178,7 +186,8 @@ struct TestNet
 
     auto &socket = _sockets[fd];
 
-    auto consumed = std::min({socket.rquota, len, socket.script.input.size()});
+    auto consumed =
+      std::min<std::size_t>({socket.rquota, len, socket.script.input.size()});
     if (consumed == 0)
     {
       errno = EAGAIN;
@@ -205,7 +214,7 @@ struct TestNet
     auto &socket = _sockets[fd];
     auto &output = _outputs[fd];
 
-    auto consumed = std::min(socket.wquota, len);
+    auto consumed = std::min<std::size_t>(socket.wquota, len);
     if (consumed == 0)
     {
       errno = EAGAIN; // NEW: backpressure
@@ -244,7 +253,7 @@ struct TestNet
 
   static void stop() noexcept { _alive = false; }
 
-  static int poll(event_t events[], std::size_t len) noexcept
+  static int poll(event_t events[], [[maybe_unused]] std::size_t len) noexcept
   {
     assert(len == _sockets.size() + 1); //  avoid fairness issues
 

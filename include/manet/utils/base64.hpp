@@ -8,15 +8,18 @@
 namespace manet::utils
 {
 
+namespace
+{
+static constexpr std::string_view table =
+  "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+}
+
 template <std::size_t M, std::size_t N>
 constexpr std::string_view base64_encode(
   const std::array<std::byte, M> &input, std::array<char, N> &out
 ) noexcept
 {
   static_assert(N == 4 * ((M + 2) / 3));
-
-  static constexpr std::string_view table =
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
   const uint8_t *src = reinterpret_cast<const uint8_t *>(input.data());
   char *pos = out.data();

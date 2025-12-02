@@ -6,53 +6,25 @@
   };
 
   outputs = { self, nixpkgs, flake-utils, git-hooks, ... }:
-    flake-utils.lib.eachDefaultSystem (system:
+    flake-utils.lib.eachSystem [ "x86_64-linux" ] (system:
       let
         pkgs = import nixpkgs { inherit system; };
+
+        manet = import ./nix/manet.nix { inherit pkgs; };
+        manet-fstack = import ./nix/manet.nix { inherit pkgs; useFStack = true; };
 
         python-with-packages = pkgs.python3.withPackages (py-pkgs: [
           py-pkgs.jinja2
           py-pkgs.lxml
           py-pkgs.websockets
         ]);
-
-        f-stack = import ./nix/f-stack.nix { inherit pkgs; };
-        sbepp = import ./nix/sbepp.nix { inherit pkgs; };
-        spsc-queue = import ./nix/spsc-queue.nix { inherit pkgs; };
-
-        manet = pkgs.stdenv.mkDerivation {
-          pname = "manet";
-          version = "0.0.1";
-          src = ./.;
-
-          cmakeFlags = [
-            "-DCMAKE_BUILD_TYPE=Release"
-            "-DUSE_FSTACK=ON"
-          ];
-
-          doCheck = true;
-
-          nativeBuildInputs = with pkgs; [
-            cmake
-            pkg-config
-          ];
-
-          buildInputs = [
-            pkgs.doctest
-            pkgs.lcov
-            pkgs.openssl
-            python-with-packages
-
-            f-stack
-            sbepp
-            spsc-queue
-          ];
-        };
       in
       {
         packages = {
           default = manet;
-          inherit f-stack;
+
+          inherit manet;
+          inherit manet-fstack;
         };
 
         checks = {
@@ -104,10 +76,6 @@
         devShells = {
           default = pkgs.mkShell {
             buildInputs = with pkgs; [
-              f-stack
-              sbepp
-              spsc-queue
-
               jq
               lcov
               python-with-packages
@@ -115,7 +83,7 @@
               valgrind
             ];
 
-            inputsFrom = [ manet ];
+            inputsFrom = [ manet manet-fstack ];
 
             NIX_ENFORCE_NO_NATIVE = 0;
 

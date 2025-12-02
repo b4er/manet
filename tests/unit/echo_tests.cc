@@ -1,4 +1,5 @@
-// #include <bit>
+#include <algorithm>
+#include <cstddef>
 #include <cstdint>
 #include <deque>
 #include <doctest/doctest.h>
@@ -36,7 +37,7 @@ struct EchoTest
       auto r = io.rbuf().size();
       auto w = io.wbuf().size();
 
-      auto L = std::min(r, w);
+      auto L = std::min<std::size_t>(r, w);
 
       for (std::size_t i = 0; i < L; i++)
       {

@@ -496,7 +496,7 @@ TEST_CASE(
     );
 
     CHECK(out.all_done);
-    CHECK(out.restarts.size() == 1); // Closed -> reactor records restart
+    REQUIRE(out.restarts.size() == 1); // Closed -> reactor records restart
     CHECK(out.restarts[0] == 0);
   }
 }
@@ -525,7 +525,7 @@ TEST_CASE(
     );
 
     CHECK(out.all_done);
-    CHECK(out.restarts.size() == 1);
+    REQUIRE(out.restarts.size() == 1);
     CHECK(out.restarts[0] == 0);
   }
 }
@@ -633,7 +633,7 @@ TEST_CASE(
     );
 
     CHECK(out.all_done);
-    CHECK(out.restarts.size() == 1); // Closed, not Error
+    REQUIRE(out.restarts.size() == 1); // Closed, not Error
     CHECK(out.restarts[0] == 0);
   }
 }
@@ -683,7 +683,7 @@ TEST_CASE(
     );
 
     CHECK(out.all_done);
-    CHECK(out.restarts.size() == 1);
+    REQUIRE(out.restarts.size() == 1);
     CHECK(out.restarts[0] == 0);
   }
 }
@@ -709,7 +709,7 @@ TEST_CASE(
     );
 
     CHECK(out.all_done);
-    CHECK(out.restarts.size() == 1);
+    REQUIRE(out.restarts.size() == 1);
     CHECK(out.restarts[0] == 0);
   }
 }
@@ -740,7 +740,7 @@ TEST_CASE(
     );
 
     CHECK(out.all_done);
-    CHECK(out.restarts.size() == 1);
+    REQUIRE(out.restarts.size() == 1);
     CHECK(out.restarts[0] == 0);
   }
 }
@@ -812,7 +812,7 @@ TEST_CASE("<ScriptedTransport,ReflectProtocol> shutdown ok closes cleanly")
     );
 
     CHECK(out.all_done);
-    CHECK(out.restarts.size() == 1);
+    REQUIRE(out.restarts.size() == 1);
     CHECK(out.restarts[0] == 0);
   }
 }
@@ -842,7 +842,7 @@ TEST_CASE("<ScriptedTransport,ReflectProtocol> shutdown want_write then ok")
     );
 
     CHECK(out.all_done);
-    CHECK(out.restarts.size() == 1);
+    REQUIRE(out.restarts.size() == 1);
     CHECK(out.restarts[0] == 0);
   }
 }
@@ -872,7 +872,7 @@ TEST_CASE("<ScriptedTransport,ReflectProtocol> shutdown want_read then ok")
     );
 
     CHECK(out.all_done);
-    CHECK(out.restarts.size() == 1);
+    REQUIRE(out.restarts.size() == 1);
     CHECK(out.restarts[0] == 0);
   }
 }
@@ -1122,7 +1122,7 @@ TEST_CASE(
   );
 
   CHECK(outputs.all_done);
-  CHECK(outputs.restarts.size() == 1);
+  REQUIRE(outputs.restarts.size() == 1);
   CHECK(outputs.restarts[0] == 0); // Closed, not Error
 }
 
@@ -1170,7 +1170,7 @@ TEST_CASE(
   );
 
   CHECK(outputs.all_done);
-  CHECK(outputs.restarts.size() == 1);
+  REQUIRE(outputs.restarts.size() == 1);
   CHECK(outputs.restarts[0] == 0);
 };
 
@@ -1194,7 +1194,7 @@ TEST_CASE(
   );
 
   CHECK(outputs.all_done);
-  CHECK(outputs.restarts.size() == 1);
+  REQUIRE(outputs.restarts.size() == 1);
   CHECK(outputs.restarts[0] == 0); // Closed
 }
 

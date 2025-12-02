@@ -265,7 +265,7 @@ TEST_CASE("<Plain,CloseTest> graceful CLOSE halts (no restart)")
       {}, {}
     );
 
-    CHECK(outputs.restarts.size() == 1);
+    REQUIRE(outputs.restarts.size() == 1);
     CHECK(outputs.restarts[0] == 0);
     CHECK(outputs.all_done);
   }
@@ -283,7 +283,7 @@ TEST_CASE("<Plain,CloseTest> TEXT then CLOSE in one halts (no restart)")
 
   auto outputs = close_test(false, input, input, actions, {}, {});
 
-  CHECK(outputs.restarts.size() == 1);
+  REQUIRE(outputs.restarts.size() == 1);
   CHECK(outputs.restarts[0] == 0);
   CHECK(outputs.all_done);
 }
@@ -375,7 +375,7 @@ TEST_CASE(
     auto outputs =
       close_test(i != 0, input, input, gen_script({input}), {}, {});
 
-    CHECK(outputs.restarts.size() == 1);
+    REQUIRE(outputs.restarts.size() == 1);
     CHECK(outputs.restarts[0] == 0);
     CHECK(outputs.all_done);
   }
@@ -394,7 +394,7 @@ TEST_CASE("<Plain,CloseTest> TEXT then MULTI-CLOSE then CLOSE restarts once")
 
   auto outputs = close_test(false, input, input, actions, {}, {});
 
-  CHECK(outputs.restarts.size() == 1);
+  REQUIRE(outputs.restarts.size() == 1);
   CHECK(outputs.restarts[0] == 0);
   CHECK(outputs.all_done);
 }
@@ -429,6 +429,6 @@ TEST_CASE("<Plain,CloseTest> bare MULTI-CLOSE then CLOSE in one read")
   auto outputs = close_test(false, input, input, actions, {}, {});
 
   CHECK(outputs.all_done);
-  CHECK(outputs.restarts.size() == 1);
+  REQUIRE(outputs.restarts.size() == 1);
   CHECK(outputs.restarts[0] == 0);
 }
