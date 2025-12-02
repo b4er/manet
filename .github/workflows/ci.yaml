@@ -1,0 +1,74 @@
+name: manet - CI
+
+on:
+  pull_request:
+    branches: [ main ]
+    types: [ opened, synchronize, reopened ]
+
+  push:
+    branches: [ '**' ]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Build & Run Tests
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Fetch Source
+        uses: actions/checkout@v6
+
+      - name: Fetch sbeppc
+        uses: actions/checkout@v6
+        with:
+          repository: OleksandrKvl/sbepp
+          path: sbeppc
+          ref: 1.7.0
+
+      - name: Fetch SPSCQueue
+        uses: actions/checkout@v6
+        with:
+          repository: rigtorp/SPSCQueue
+          path: SPSCQueue
+          ref: 1053918dbd251fbff69b24ef27fa5d51c29ec2af
+
+      - name: Install Dependencies
+        run: |
+          set -euo pipefail
+
+          # System
+          sudo apt-get update
+          sudo apt-get install -y lcov {doctest,libfmt,libpugixml}-dev
+
+          # Python
+          python3 -m pip install --upgrade pip
+          python3 -m pip install "websockets>=13"
+
+          # C++
+          for dir in sbeppc SPSCQueue; do
+            pushd "$dir"
+
+            mkdir build
+            cmake -S . -B build
+            cmake --build build
+            sudo cmake --install build
+
+            popd
+          done
+
+      - name: Build (CMake)
+        run: |
+          set -euo pipefail
+
+          cmake -S . -B build/coverage -DCMAKE_BUILD_TYPE=Debug -DMANET_BUILD_EXAMPLES=OFF -DMANET_ENABLE_COVERAGE=ON
+          cmake --build build/coverage
+
+          cmake -S . -B build/release -DCMAKE_BUILD_TYPE=Release
+          cmake --build build/release
+
+      - name: Run Tests (CTest)
+        working-directory: build/coverage
+        run: ctest --output-on-failure

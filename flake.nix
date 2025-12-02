@@ -32,6 +32,7 @@
             src = ./.;
 
             hooks = {
+              actionlint.enable = true;
               clang-format.enable = true;
               clang-tidy = {
                 name = "clang-tidy";
